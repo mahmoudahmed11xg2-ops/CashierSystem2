@@ -5,7 +5,7 @@
 // 2. مزامنة صامتة تماماً مع GitHub في الخلفية دون أي تدخل من الكاشير.
 // 3. عند فتح النظام يسحب فوراً أي تعديلات سحابية حدثت من الهاتف/المنزل.
 
-import { fetchFileFromGitHub, saveFileToGitHub, getGitHubConfig } from './githubSync.js';
+import { fetchFileFromGitHub, saveFileToGitHub, getGitHubConfig, checkGitHubRepoAccess } from './githubSync.js';
 
 export const DOMAINS = {
   categories:  { key: 'cs_cats', file: 'data/catalog/categories.json' },
@@ -171,25 +171,42 @@ function set(name, value) {
 // دالة تصدير لكل البيانات الحالية ورفعها دفعة واحدة إلى GitHub
 async function pushAllToGitHub() {
   const cfg = getGitHubConfig();
-  if (!cfg.token || !cfg.repo) throw new Error('يرجى ضبط بيانات GitHub أولاً');
+  if (!cfg.token || !cfg.repo) {
+    throw new Error('يرجى ملء بيانات المستودع (Repository) ورمز الـ Token أولاً في صفحة الإعدادات.');
+  }
+
+  // التحقق من صلاحيات الاتصال بالمستودع
+  const repoInfo = await checkGitHubRepoAccess(cfg);
 
   const results = [];
   for (const [name, domain] of Object.entries(DOMAINS)) {
     const val = get(name);
     if (val !== undefined && val !== null) {
-      const ok = await saveFileToGitHub(domain.file, val, `Initial Push: ${name}`);
-      results.push({ name, ok });
+      await saveFileToGitHub(domain.file, val, `Manual Push: ${name}`);
+      results.push({ name, file: domain.file, ok: true });
     }
   }
-  return results;
+
+  return {
+    results,
+    totalPushed: results.length,
+    repoName: repoInfo.fullName
+  };
 }
 
 // دالة سحب كل البيانات دفعة واحدة من GitHub
 async function pullAllFromGitHub() {
   const cfg = getGitHubConfig();
-  if (!cfg.token || !cfg.repo) throw new Error('يرجى ضبط بيانات GitHub أولاً');
+  if (!cfg.token || !cfg.repo) {
+    throw new Error('يرجى ملء بيانات المستودع (Repository) ورمز الـ Token أولاً في صفحة الإعدادات.');
+  }
+
+  // 1. التحقق المسبق من وجود المستودع وصلاحيات الـ Token
+  const repoInfo = await checkGitHubRepoAccess(cfg);
 
   const results = [];
+  const notFoundFiles = [];
+
   for (const [name, domain] of Object.entries(DOMAINS)) {
     const res = await fetchFileFromGitHub(domain.file);
     if (res && res.content !== undefined) {
@@ -197,10 +214,26 @@ async function pullAllFromGitHub() {
       window.dispatchEvent(new CustomEvent('cs:datachange', {
         detail: { domain: name, value: res.content, remote: true }
       }));
-      results.push({ name, ok: true });
+      results.push({ name, file: domain.file, ok: true });
+    } else {
+      notFoundFiles.push(domain.file);
     }
   }
-  return results;
+
+  // إذا لم يتم العثور على أي ملف إطلاقاً في المستودع
+  if (results.length === 0) {
+    throw new Error(
+      `تم الاتصال بنجاح بمستودع (${repoInfo.fullName})، ولكن المستودع لا يحتوي على مجلد بيانات النظام (data/) بعد!\n\n` +
+      `💡 سبب المشكلة: لم يتم رفع البيانات إلى GitHub من قبل.\n` +
+      `الحل: اضغط على زر "رفع بيانات المحل للسحابة ⬆️" أولاً لحفظ المنيو والمخزن على السحابة، ثم يمكنك السحب لاحقاً من أي جهاز.`
+    );
+  }
+
+  return {
+    results,
+    totalPulled: results.length,
+    repoName: repoInfo.fullName
+  };
 }
 
 export const DataService = {

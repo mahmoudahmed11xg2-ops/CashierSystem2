@@ -14,11 +14,58 @@ export function getGitHubConfig() {
 }
 
 export function saveGitHubConfig(cfg) {
-  // إزالة أي مسافات زائدة
+  // إزالة أي مسافات زائدة وتنسيق اسم المستودع
   if (cfg.token) cfg.token = cfg.token.trim();
-  if (cfg.repo) cfg.repo = cfg.repo.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/$/, '');
-  if (cfg.branch) cfg.branch = cfg.branch.trim();
+  if (cfg.repo) {
+    cfg.repo = cfg.repo.trim()
+      .replace(/^https?:\/\/github\.com\//, '')
+      .replace(/\.git$/, '')
+      .replace(/\/$/, '');
+  }
+  if (cfg.branch) cfg.branch = cfg.branch.trim() || 'main';
   localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+}
+
+// دالة فحص وتأكيد صلاحية الاتصال بمستودع GitHub مع رسائل خطأ دقيقة
+export async function checkGitHubRepoAccess(customCfg = null) {
+  const cfg = customCfg || getGitHubConfig();
+  if (!cfg.token || !cfg.repo) {
+    throw new Error('لم يتم إدخال اسم المستودع (Repository) أو رمز الوصول السري (Token)');
+  }
+
+  const cleanRepo = cfg.repo.trim()
+    .replace(/^https?:\/\/github\.com\//, '')
+    .replace(/\.git$/, '')
+    .replace(/\/$/, '');
+
+  const url = `https://api.github.com/repos/${cleanRepo}`;
+  const res = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${cfg.token}`,
+      'Accept': 'application/vnd.github.v3+json'
+    }
+  });
+
+  if (res.status === 401) {
+    throw new Error('رمز الـ Token غير صحيح أو انتهت صلاحيته (401 Bad Credentials)');
+  }
+  if (res.status === 403) {
+    throw new Error('تم رفض الوصول (403 Forbidden). تأكد من إعطاء الـ Token صلاحية "repo" أو "Contents: Read & Write"');
+  }
+  if (res.status === 404) {
+    throw new Error(`المستودع (${cleanRepo}) غير موجود، أو أنه مستودع خاص (Private) والـ Token لا يمتلك صلاحية قراءته (404 Not Found)`);
+  }
+  if (!res.ok) {
+    throw new Error(`خطأ من خادم GitHub (${res.status}): ${res.statusText}`);
+  }
+
+  const data = await res.json();
+  return {
+    ok: true,
+    fullName: data.full_name,
+    defaultBranch: data.default_branch || 'main',
+    isPrivate: data.private
+  };
 }
 
 // دالة لجلب محتوى ملف من مستودع GitHub
@@ -26,7 +73,12 @@ export async function fetchFileFromGitHub(path) {
   const cfg = getGitHubConfig();
   if (!cfg.token || !cfg.repo) return null;
 
-  const url = `https://api.github.com/repos/${cfg.repo}/contents/${path}?ref=${cfg.branch || 'main'}`;
+  const cleanRepo = cfg.repo.trim()
+    .replace(/^https?:\/\/github\.com\//, '')
+    .replace(/\.git$/, '')
+    .replace(/\/$/, '');
+
+  const url = `https://api.github.com/repos/${cleanRepo}/contents/${path}?ref=${cfg.branch || 'main'}`;
   try {
     const res = await fetch(url, {
       headers: {
@@ -34,10 +86,20 @@ export async function fetchFileFromGitHub(path) {
         'Accept': 'application/vnd.github.v3+json'
       }
     });
+
     if (!res.ok) {
-      if (res.status === 404) return null;
+      if (res.status === 401) {
+        throw new Error('رمز الـ Token غير صالح أو منتهي الصلاحية (401)');
+      }
+      if (res.status === 403) {
+        throw new Error('تم رفض إذن القراءة من GitHub للـ Token الحالي (403)');
+      }
+      if (res.status === 404) {
+        return null; // الملف غير موجود في هذا المسار بعد
+      }
       return null;
     }
+
     const data = await res.json();
     if (data && data.content) {
       const binaryString = atob(data.content.replace(/\s/g, ''));
@@ -53,6 +115,9 @@ export async function fetchFileFromGitHub(path) {
     }
     return null;
   } catch (err) {
+    if (err.message && (err.message.includes('401') || err.message.includes('403'))) {
+      throw err;
+    }
     console.warn(`[GitHubSync] خطأ أثناء جلب الملف ${path}:`, err);
     return null;
   }
@@ -65,7 +130,12 @@ export async function saveFileToGitHub(path, contentObject, commitMessage = 'Aut
     throw new Error('يرجى ملء بيانات المستودع والـ Token أولاً');
   }
 
-  const url = `https://api.github.com/repos/${cfg.repo}/contents/${path}`;
+  const cleanRepo = cfg.repo.trim()
+    .replace(/^https?:\/\/github\.com\//, '')
+    .replace(/\.git$/, '')
+    .replace(/\/$/, '');
+
+  const url = `https://api.github.com/repos/${cleanRepo}/contents/${path}`;
   
   // 1. معرفة sha الحالي إذا كان الملف موجوداً مسبقاً
   let sha = null;

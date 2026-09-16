@@ -421,14 +421,26 @@ body {
           <span>☁️ قاعدة البيانات السحابية (GitHub Cloud Database)</span>
           <span id="ghStatusBadge" style="font-size:12px;padding:2px 8px;border-radius:12px;background:#e2e8f0;color:#475569;">غير مهيأ</span>
         </div>
-        <div class="card-desc">ربط سحابي آمن وتلقائي 100% مع GitHub. المزامنة تتم في صمت تلقائياً عند فتح النظام في المحل أو البيع دون أن يضغط الكاشير على أي شيء!</div>
+        <div class="card-desc">ربط سحابي آمن وتلقائي مع مستودع GitHub الخاص بك. يتيح لك مزامنة بيانات المنيو والمخزن والمبيعات بين عدة أجهزة (الكمبيوتر بالمحل، الموبايل، واللابتوب بالمنزل).</div>
+      </div>
+
+      <!-- دليل تعليمي لحل مشكلة السحب وعدم عمل المزامنة -->
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:#1e40af;line-height:1.7;">
+        <div style="font-weight:bold;font-size:13px;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+          <span>💡 لماذا قد لا يعمل سحب البيانات؟ وكيف تشغل السحابة بنجاح؟</span>
+        </div>
+        <ol style="margin:0;padding-right:20px;">
+          <li><strong>إعداد المستودع والـ Token:</strong> يجب أولاً إدخال اسم المستودع (مثلاً <code>username/my-pos-data</code>) ورمز الـ Token الشخصي من GitHub بصلاحية <code>repo</code> أو <code>Contents: Read and Write</code>.</li>
+          <li><strong style="color:#b91c1c;">الخطوة الأهم (الرفع أولاً):</strong> إذا كان المستودع جديداً على GitHub، فهو فارغ ولا يحتوي على بيانات! <u>لن يعمل سحب البيانات</u> إلا بعد أن تضغط أولاً على <strong>"رفع بيانات المحل للسحابة ⬆️"</strong> لإنشاء ملفات الأصناف والمخزن سحابياً.</li>
+          <li><strong>بعد الرفع لأول مرة:</strong> يمكنك الدخول من أي جهاز آخر وإدخال نفس الـ Token والمستودع، والضغط على <strong>"سحب البيانات من السحابة ⬇️"</strong> أو ستسحب تلقائياً!</li>
+        </ol>
       </div>
       
       <form onsubmit="handleSaveGitHubConfig(event)">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
           <div class="form-group">
             <label>مستودع جيت هب (Repository) *</label>
-            <input type="text" id="ghRepo" placeholder="username/my-pos-database" required />
+            <input type="text" id="ghRepo" placeholder="مثال: ahmed/restaurant-db أو الرابط كاملاً" required />
           </div>
           <div class="form-group">
             <label>الفرع (Branch)</label>
@@ -438,16 +450,17 @@ body {
         <div class="form-group" style="margin-bottom:12px;">
           <label>رمز الوصول السري لـ جيت هب (Personal Access Token) *</label>
           <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" required />
+          <small style="color:var(--text-muted);font-size:11px;">احصل عليه من GitHub: Settings ➔ Developer Settings ➔ Personal Access Tokens (Classic) مع تفعيل صلاحية <strong>repo</strong>.</small>
         </div>
         
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:16px;">
           <div style="display:flex;gap:8px;align-items:center;">
-            <button type="submit" class="btn-primary" style="background:#0284c7;">حفظ وتفعيل المزامنة التلقائية</button>
+            <button type="submit" class="btn-primary" style="background:#0284c7;">حفظ وتفعيل المزامنة</button>
             <button type="button" class="btn-secondary" onclick="testGitHubConnection()">اختبار الاتصال ⚡</button>
           </div>
           <div style="display:flex;gap:8px;">
-            <button type="button" class="btn-secondary" onclick="manualPushAllToGH()" title="رفع كل بيانات الكاشير الحالية فوراً إلى جيت هب">رفع بيانات المحل للسحابة ⬆️</button>
-            <button type="button" class="btn-secondary" onclick="manualPullAllFromGH()" title="سحب كل البيانات من جيت هب واستبدال الكاش المحلي بها">سحب البيانات من السحابة ⬇️</button>
+            <button type="button" class="btn-secondary" style="font-weight:700;color:#0369a1;background:#e0f2fe;border-color:#bae6fd;" onclick="manualPushAllToGH()" title="رفع كل بيانات الكاشير الحالية فوراً إلى جيت هب">رفع بيانات المحل للسحابة ⬆️</button>
+            <button type="button" class="btn-secondary" style="font-weight:700;" onclick="manualPullAllFromGH()" title="سحب كل البيانات من جيت هب واستبدال الكاش المحلي بها">سحب البيانات من السحابة ⬇️</button>
           </div>
         </div>
       </form>
@@ -508,12 +521,27 @@ body {
   </div>
 </div>
 
+<!-- MODAL: CLOUD STATUS & GUIDANCE -->
+<div class="overlay" id="cloudStatusModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <span class="modal-title" id="cloudModalTitle">حالة المزامنة السحابية</span>
+      <button class="modal-close" onclick="closeModal('cloudStatusModal')">✕</button>
+    </div>
+    <div style="padding:4px 0 16px 0;">
+      <div id="cloudModalIcon" style="font-size:42px;text-align:center;margin-bottom:12px;">☁️</div>
+      <div id="cloudModalBody" style="font-size:13.5px;line-height:1.7;color:var(--text-main);white-space:pre-line;text-align:right;"></div>
+      <div id="cloudModalAction" style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;"></div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
 import AuthService from './auth.js';
 import DataService from './js/dataService.js';
-import { getGitHubConfig, saveGitHubConfig, fetchFileFromGitHub } from './js/githubSync.js';
+import { getGitHubConfig, saveGitHubConfig, fetchFileFromGitHub, checkGitHubRepoAccess } from './js/githubSync.js';
 import ThermalPrinter from './js/thermalPrinter.js';
 
 // تحميل الإعدادات الافتراضية للمحل من data/ وزرعها في الكاش المحلي
@@ -578,7 +606,32 @@ function updateGHBadge() {
   }
 }
 
-window.handleSaveGitHubConfig = function(e) {
+window.showCloudModal = function({ title, message, type = 'info', actionHtml = '' }) {
+  document.getElementById('cloudModalTitle').textContent = title;
+  const iconEl = document.getElementById('cloudModalIcon');
+  const bodyEl = document.getElementById('cloudModalBody');
+  const actEl = document.getElementById('cloudModalAction');
+
+  if (type === 'success') {
+    iconEl.textContent = '✅';
+    iconEl.style.color = 'var(--green)';
+  } else if (type === 'error') {
+    iconEl.textContent = '❌';
+    iconEl.style.color = 'var(--red)';
+  } else if (type === 'warning') {
+    iconEl.textContent = '⚠️';
+    iconEl.style.color = '#d97706';
+  } else {
+    iconEl.textContent = '☁️';
+    iconEl.style.color = '#0284c7';
+  }
+
+  bodyEl.textContent = message;
+  actEl.innerHTML = actionHtml || '<button type="button" class="btn-primary" onclick="closeModal(\'cloudStatusModal\')">حسناً</button>';
+  openModal('cloudStatusModal');
+};
+
+window.handleSaveGitHubConfig = async function(e) {
   e.preventDefault();
   const repo = document.getElementById('ghRepo').value.trim();
   const branch = document.getElementById('ghBranch').value.trim() || 'main';
@@ -586,57 +639,127 @@ window.handleSaveGitHubConfig = function(e) {
 
   saveGitHubConfig({ repo, branch, token, autoSync: true });
   updateGHBadge();
-  showToast('تم حفظ إعدادات GitHub بنجاح! المزامنة الصامتة مفعلة الآن.');
+  showToast('تم حفظ إعدادات GitHub بنجاح! جاري فحص الاتصال...');
+
+  try {
+    const info = await checkGitHubRepoAccess({ repo, token, branch });
+    showToast(`تم التحقق من الاتصال بمستودع (${info.fullName}) بنجاح ✅`);
+  } catch (err) {
+    showCloudModal({
+      title: 'تنبيه بشأن إعدادات GitHub',
+      message: `تم حفظ الإعدادات، ولكن فحص الاتصال واجه مشكلة:\n\n${err.message}\n\nيرجى التأكد من اسم المستودع ورمز الـ Token وصلاحياته.`,
+      type: 'warning'
+    });
+  }
 };
 
 window.testGitHubConnection = async function() {
   const repo = document.getElementById('ghRepo').value.trim();
+  const branch = document.getElementById('ghBranch').value.trim() || 'main';
   const token = document.getElementById('ghToken').value.trim();
   if (!repo || !token) {
-    showToast('يرجى ملء المستودع ورمز الـ Token أولاً');
+    showCloudModal({
+      title: 'بيانات غير مكتملة',
+      message: 'يرجى كتابة اسم المستودع (Repository) ورمز الـ Token أولاً لتتمكن من فحص الاتصال بالسحابة.',
+      type: 'warning'
+    });
     return;
   }
 
   showToast('جاري التحقق من الاتصال بمستودع GitHub...');
   try {
-    const res = await fetch(`https://api.github.com/repos/${repo}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+    const info = await checkGitHubRepoAccess({ repo, token, branch });
+    showCloudModal({
+      title: 'الاتصال بالسحابة ناجح ومثالي! 🎉',
+      message: `تم الاتصال بنجاح بمستودع:\n📦 ${info.fullName}\n\n` +
+               `• نوع المستودع: ${info.isPrivate ? 'خاص (Private)' : 'عام (Public)'}\n` +
+               `• الفرع الافتراضي: ${info.defaultBranch}\n` +
+               `• الصلاحية: تم التحقق من صلاحية الـ Token بنجاح.\n\n` +
+               `💡 ملاحظة: إذا كان هذا المستودع جديداً، اضغط على زر "رفع بيانات المحل للسحابة ⬆️" لإنشاء ملفات البيانات عليه.`,
+      type: 'success'
     });
-    if (res.ok) {
-      const data = await res.json();
-      showToast(`تم الاتصال بنجاح بمستودع (${data.full_name}) ✅`);
-    } else {
-      showToast(`فشل الاتصال: كود ${res.status}. تأكد من صحة المستودع وصلاحية الـ Token ❌`);
-    }
   } catch (err) {
-    showToast('خطأ في الاتصال بالإنترنت: ' + err.message);
+    showCloudModal({
+      title: 'فشل الاتصال بمستودع GitHub',
+      message: `تعذر الوصول للمستودع السحابي:\n\n${err.message}\n\n` +
+               `📌 خطوات الحل:\n` +
+               `1. تأكد من أن اسم المستودع مكتوب بصيغة: username/repository\n` +
+               `2. تأكد أن رمز الـ Token يبدأ بـ ghp_ أو github_pat_\n` +
+               `3. تأكد من إعطاء الـ Token صلاحية 'repo' أو 'Contents: Read and write'.`,
+      type: 'error'
+    });
   }
 };
 
 window.manualPushAllToGH = async function() {
-  const ok = confirm('هل تريد رفع كل بيانات الكاشير والمخازن الحالية فوراً إلى GitHub لحفظها سحابياً؟');
+  const repo = document.getElementById('ghRepo').value.trim();
+  const token = document.getElementById('ghToken').value.trim();
+  if (!repo || !token) {
+    showCloudModal({
+      title: 'بيانات غير مكتملة',
+      message: 'يرجى إدخال اسم المستودع (Repository) والـ Token أولاً وحفظهما.',
+      type: 'warning'
+    });
+    return;
+  }
+
+  const ok = confirm('هل تريد رفع كل بيانات الكاشير والمخازن والمنيو الحالية إلى GitHub لحفظها سحابياً؟');
   if (!ok) return;
 
-  showToast('جاري رفع كافة البيانات إلى GitHub...');
+  showToast('جاري رفع كافة ملفات البيانات إلى GitHub...');
   try {
-    await DataService.pushAllToGitHub();
-    showToast('تم رفع كافة البيانات إلى GitHub بنجاح! 🎉');
+    const res = await DataService.pushAllToGitHub();
+    showCloudModal({
+      title: 'تم الرفع إلى السحابة بنجاح! 🚀',
+      message: `تم رفع وتحديث ${res.totalPushed} ملف بيانات بنجاح إلى مستودع (${res.repoName}) على GitHub!\n\n` +
+               `الآن قاعدة بياناتك السحابية جاهزة ومكتملة، ويمكنك الدخول من أي جهاز وسحب البيانات فوراً.`,
+      type: 'success'
+    });
   } catch (err) {
-    showToast('حدث خطأ أثناء الرفع: ' + err.message);
+    showCloudModal({
+      title: 'حدث خطأ أثناء رفع البيانات',
+      message: `تعذر رفع البيانات إلى GitHub:\n\n${err.message}`,
+      type: 'error'
+    });
   }
 };
 
 window.manualPullAllFromGH = async function() {
-  const ok = confirm('تنبيه: سيتم تنزيل أحدث نسخة من GitHub واستبدال البيانات المحلية بها. متابعة؟');
+  const repo = document.getElementById('ghRepo').value.trim();
+  const token = document.getElementById('ghToken').value.trim();
+  if (!repo || !token) {
+    showCloudModal({
+      title: 'بيانات غير مكتملة',
+      message: 'يرجى كتابة اسم المستودع ورمز الـ Token أولاً في الحقول أعلاه وحفظهما.',
+      type: 'warning'
+    });
+    return;
+  }
+
+  const ok = confirm('تنبيه: سيتم تنزيل أحدث نسخة من البيانات من مستودع GitHub واستبدال البيانات المحلية بها. متابعة؟');
   if (!ok) return;
 
-  showToast('جاري سحب كافة البيانات من GitHub...');
+  showToast('جاري سحب كافة البيانات من مستودع GitHub...');
   try {
-    await DataService.pullAllFromGitHub();
-    showToast('تم تحديث وسحب كافة البيانات بنجاح! جاري إعادة التحميل...');
-    setTimeout(() => window.location.reload(), 1200);
+    const res = await DataService.pullAllFromGitHub();
+    showCloudModal({
+      title: 'تم سحب البيانات بنجاح! ⬇️',
+      message: `تم سحب ${res.totalPulled} ملف بيانات بنجاح من مستودع (${res.repoName})!\n\nسيتم تحديث الصفحة الآن لعرض أحدث البيانات المسحوبة.`,
+      type: 'success',
+      actionHtml: '<button type="button" class="btn-primary" onclick="window.location.reload()">تحديث الصفحة الآن</button>'
+    });
+    setTimeout(() => window.location.reload(), 2000);
   } catch (err) {
-    showToast('حدث خطأ أثناء السحب: ' + err.message);
+    // إذا كان الخطأ بسبب أن المستودع فارغ ولم يُرفع له شيء بعد
+    const isRepoEmpty = err.message && err.message.includes('لا يحتوي على مجلد بيانات');
+    showCloudModal({
+      title: isRepoEmpty ? 'المستودع السحابي فارغ' : 'حدث خطأ أثناء سحب البيانات',
+      message: err.message,
+      type: isRepoEmpty ? 'warning' : 'error',
+      actionHtml: isRepoEmpty
+        ? '<button type="button" class="btn-primary" onclick="closeModal(\'cloudStatusModal\'); manualPushAllToGH();">رفع بيانات المحل الآن ⬆️</button>'
+        : '<button type="button" class="btn-secondary" onclick="closeModal(\'cloudStatusModal\')">إغلاق</button>'
+    });
   }
 };
 
