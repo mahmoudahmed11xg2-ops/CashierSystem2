@@ -443,6 +443,7 @@ body {
 <script type="module">
 import AuthService from './auth.js';
 import DataService from './js/dataService.js';
+import ThermalPrinter from './js/thermalPrinter.js';
 
 // تحميل الطلبات والطيارين من السيرفر
 await DataService.init(['orders', 'captains']);
@@ -502,9 +503,14 @@ window.renderDeliveries = function() {
           <div><strong>العنوان:</strong> ${o.dAddr || '—'}</div>
         </div>
         <div class="dc-sub">الساعة: ${o.time || '—'} | ${(o.items||[]).length} أصناف</div>
-        <button class="btn-card-action primary" onclick="openAssignModal('${o.id}')">
-          تعيين كابتن وخروج الطلب
-        </button>
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <button class="btn-card-action primary" style="flex:1;" onclick="openAssignModal('${o.id}')">
+            تعيين كابتن وخروج الطلب
+          </button>
+          <button class="btn-card-action" style="flex:0 0 auto;background:#f1f5f9;color:#0f172a;font-weight:700;" onclick="printDeliveryReceipt('${o.id}')" title="طباعة بون الديليفري لطابعة Rongta">
+            🖨️ بون
+          </button>
+        </div>
       </div>
     `).join('');
   }
@@ -525,9 +531,14 @@ window.renderDeliveries = function() {
           <div><strong>العميل:</strong> ${o.customer || '—'} (${o.customerPhone || ''})</div>
           <div><strong>العنوان:</strong> ${o.dAddr || '—'}</div>
         </div>
-        <button class="btn-card-action success" onclick="markDelivered('${o.id}')">
-          تأكيد التسليم واستلام النقدية
-        </button>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <button class="btn-card-action success" style="flex:1;" onclick="markDelivered('${o.id}')">
+            تأكيد التسليم واستلام النقدية
+          </button>
+          <button class="btn-card-action" style="flex:0 0 auto;background:#f1f5f9;color:#0f172a;font-weight:700;" onclick="printDeliveryReceipt('${o.id}')" title="طباعة بون الديليفري لطابعة Rongta">
+            🖨️ بون
+          </button>
+        </div>
       </div>
     `).join('');
   }
@@ -547,10 +558,28 @@ window.renderDeliveries = function() {
           <div><strong>العميل:</strong> ${o.customer || '—'}</div>
           <div><strong>المستلم عبر:</strong> ${o.dCapName || '—'}</div>
         </div>
-        <div class="dc-sub" style="color:var(--green);font-weight:700;">تم التسليم بنجاح</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+          <div class="dc-sub" style="color:var(--green);font-weight:700;">تم التسليم بنجاح ✓</div>
+          <button class="btn-card-action" style="width:auto;padding:4px 8px;font-size:11px;background:#f1f5f9;color:#0f172a;" onclick="printDeliveryReceipt('${o.id}')">
+            🖨️ إعادة طباعة البون
+          </button>
+        </div>
       </div>
     `).join('');
   }
+};
+
+window.printDeliveryReceipt = function(orderId) {
+  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const o = orders.find(x => String(x.id) === String(orderId));
+  if (!o) {
+    showToast('لم يتم العثور على الطلب');
+    return;
+  }
+  showToast('جاري إرسال بون التوصيل #' + o.id + ' لطابعة Rongta RP336 (80 مم)...');
+  ThermalPrinter.printReceipt(o).catch(err => {
+    showToast('خطأ في الطباعة: ' + err.message);
+  });
 };
 
 window.openAssignModal = function(orderId) {

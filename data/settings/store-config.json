@@ -4,6 +4,7 @@
   "storeAddress": "شارع النصر الرئيسي",
   "tax": 14,
   "deliveryFee": 15,
+  "printerModel": "Rongta RP336 (80mm)",
   "paperWidth": "80mm",
   "autoPrint": "enabled",
   "receiptFooter": "شكرًا لزيارتكم ونسعد بخدمتكم دائمًا!"

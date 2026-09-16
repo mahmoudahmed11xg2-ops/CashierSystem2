@@ -345,34 +345,70 @@ body {
       </form>
     </div>
 
-    <!-- CARD 2: PRINTER & RECEIPT -->
-    <div class="settings-card">
+    <!-- CARD 2: PRINTER & RECEIPT (Rongta RP336 80mm) -->
+    <div class="settings-card" style="border-color:#cbd5e1;">
       <div class="card-header">
-        <div class="card-title">إعدادات الطابعة الحرارية والإيصالات</div>
-        <div class="card-desc">تخصيص مقاس ورق الطباعة ونصوص الإشعار في ذيل الفاتورة</div>
+        <div class="card-title" style="display:flex;align-items:center;gap:8px;">
+          <span>🖨️ إعدادات الطابعة الحرارية والفواتير</span>
+          <span style="background:#e0f2fe;color:#0369a1;font-size:12px;padding:2px 8px;border-radius:10px;font-weight:bold;">مهيأة لطابعة Rongta RP336 (80mm)</span>
+        </div>
+        <div class="card-desc">تخصيص مقاس الورق، الطباعة التلقائية، واختبار الاتصال المباشر بطابعة الفواتير</div>
       </div>
       <form onsubmit="handleSavePrinter(event)">
         <div class="grid-2">
           <div class="form-group">
-            <label>عرض ورق الفاتورة الحرارية</label>
-            <select id="cfgPaperWidth">
-              <option value="80mm">80 مم (طابعات الفواتير القياسية)</option>
-              <option value="58mm">58 مم (طابعات البلوتوث المحمولة الصغيرة)</option>
+            <label>طراز الطابعة الموصلة</label>
+            <select id="cfgPrinterModel">
+              <option value="Rongta RP336 (80mm)">Rongta RP336 (عرض 80 مم - موصى به)</option>
+              <option value="Rongta RP326 / RP80">Rongta RP326 / RP80 (80 مم)</option>
+              <option value="Generic 80mm ESC/POS">طابعة فواتير حرارية عامة POS-80 (80 مم)</option>
+              <option value="Portable 58mm">طابعة بلوتوث / صغيرة محمولة (58 مم)</option>
             </select>
           </div>
           <div class="form-group">
-            <label>الطباعة التلقائية عند إتمام الطلب</label>
-            <select id="cfgAutoPrint">
-              <option value="enabled">مفعلة تلقائيًا</option>
-              <option value="manual">يدوية (عند الطلب فقط)</option>
+            <label>عرض ورق الفاتورة</label>
+            <select id="cfgPaperWidth">
+              <option value="80mm">80 مم (قياسي لطابعات Rongta RP336)</option>
+              <option value="58mm">58 مم (طابعات صغيرة محمولة)</option>
             </select>
           </div>
         </div>
-        <div class="form-group">
-          <label>رسالة ذيل الفاتورة (Footer Note)</label>
-          <input type="text" id="cfgReceiptFooter" placeholder="مثال: شكرًا لزيارتكم ونسعد بخدمتكم دائمًا!" />
+        <div class="grid-2">
+          <div class="form-group">
+            <label>الطباعة التلقائية عند إتمام الطلب بالكاشير</label>
+            <select id="cfgAutoPrint">
+              <option value="enabled">مفعلة تلقائيًا فور حفظ الفاتورة (Auto-Print)</option>
+              <option value="manual">يدوية (عند ضغط زر الطباعة فقط)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>رسالة ذيل الفاتورة (Footer Note)</label>
+            <input type="text" id="cfgReceiptFooter" placeholder="مثال: شكرًا لزيارتكم ونسعد بخدمتكم دائمًا!" />
+          </div>
         </div>
-        <div style="display:flex;justify-content:flex-end;">
+
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;margin:12px 0;">
+          <div style="font-weight:800;font-size:13px;margin-bottom:6px;color:#1e293b;display:flex;align-items:center;gap:6px;">
+            <span>📋 إرشادات مهمة لتعريف وتشغيل طابعة Rongta RP336 على الجهاز:</span>
+          </div>
+          <ul style="margin:0;padding-right:20px;font-size:12px;color:#475569;line-height:1.7;">
+            <li><strong>اختيار الطابعة:</strong> في نافذة الطباعة المنبثقة، تأكد من اختيار <strong>Rongta RP336</strong> أو <strong>POS-80</strong> في خانة الوجهة (Destination).</li>
+            <li><strong>مقاس الورق (Paper Size):</strong> اختر <strong>80mm</strong> أو <strong>Roll Paper 80 x 297mm</strong>.</li>
+            <li><strong>الهوامش (Margins):</strong> <span style="color:#b91c1c;font-weight:bold;">اختر بلا (None)</span> — هذا يمنع قص أو خروج الفاتورة فارغة.</li>
+            <li><strong>الرؤوس والتذييلات (Headers & Footers):</strong> <span style="color:#b91c1c;font-weight:bold;">قم بإلغاء التحديد (Uncheck)</span> حتى لا يُطبع عنوان المتصفح والتاريخ على الفاتورة.</li>
+            <li><strong>تغذية الورق:</strong> تأكد من تركيب بكرة الورق الحراري بحيث يسحب الورق للأعلى (الوجه الأبيض الحراري ملامس للمسطرة الحرارية).</li>
+          </ul>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button type="button" class="btn-secondary" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;font-weight:800;" onclick="testRongtaPrinter()">
+              🖨️ طباعة إيصال تجريبي لطابعة Rongta RP336 (80mm)
+            </button>
+            <button type="button" class="btn-secondary" style="font-size:12px;" onclick="testDirectUSBPrinter()" title="طباعة مباشرة عبر منفذ USB بدون نافذة المتصفح">
+              🔌 اختبار منفذ USB مباشر (ESC/POS)
+            </button>
+          </div>
           <button type="submit" class="btn-primary">حفظ إعدادات الطباعة</button>
         </div>
       </form>
@@ -478,6 +514,7 @@ body {
 import AuthService from './auth.js';
 import DataService from './js/dataService.js';
 import { getGitHubConfig, saveGitHubConfig, fetchFileFromGitHub } from './js/githubSync.js';
+import ThermalPrinter from './js/thermalPrinter.js';
 
 // تحميل الإعدادات الافتراضية للمحل من data/ وزرعها في الكاش المحلي
 // لو أول مرة (بدل الأرقام الثابتة اللي كانت هنا قبل كده)
@@ -513,6 +550,7 @@ function loadSettings() {
   document.getElementById('cfgTax').value = cfg.tax !== undefined ? cfg.tax : 0;
   document.getElementById('cfgDeliveryFee').value = cfg.deliveryFee !== undefined ? cfg.deliveryFee : 0;
 
+  document.getElementById('cfgPrinterModel').value = cfg.printerModel || 'Rongta RP336 (80mm)';
   document.getElementById('cfgPaperWidth').value = cfg.paperWidth || '80mm';
   document.getElementById('cfgAutoPrint').value = cfg.autoPrint || 'enabled';
   document.getElementById('cfgReceiptFooter').value = cfg.receiptFooter || '';
@@ -618,12 +656,36 @@ window.handleSaveStoreProfile = function(e) {
 window.handleSavePrinter = function(e) {
   e.preventDefault();
   const cfg = JSON.parse(localStorage.getItem('cs_configs') || '{}');
+  cfg.printerModel = document.getElementById('cfgPrinterModel').value;
   cfg.paperWidth = document.getElementById('cfgPaperWidth').value;
   cfg.autoPrint = document.getElementById('cfgAutoPrint').value;
   cfg.receiptFooter = document.getElementById('cfgReceiptFooter').value.trim();
 
   DataService.set('storeConfig', cfg);
-  showToast('تم حفظ إعدادات الطباعة والإيصال بنجاح');
+  showToast('تم حفظ إعدادات طابعة Rongta والإيصالات بنجاح');
+};
+
+window.testRongtaPrinter = function() {
+  showToast('جاري إرسال إيصال فحص كامل لطابعة Rongta RP336 (عرض 80 مم)...');
+  ThermalPrinter.printTestReceipt().then(() => {
+    showToast('تم إرسال أمر فحص طابعة Rongta بنجاح!');
+  }).catch(err => {
+    showToast('خطأ أثناء تشغيل الطباعة: ' + (err.message || err));
+  });
+};
+
+window.testDirectUSBPrinter = async function() {
+  const testInvoice = {
+    id: 'TEST-RONGTA',
+    total: 150
+  };
+  try {
+    showToast('جاري طلب منفذ USB لطابعة Rongta RP336...');
+    await ThermalPrinter.printDirectESC_POS(testInvoice);
+    showToast('تمت الطباعة المباشرة عبر USB ESC/POS بنجاح!');
+  } catch (err) {
+    showToast('تنبيه USB: ' + (err.message || 'تعذر الاتصال المباشر'));
+  }
 };
 
 // Backup Export

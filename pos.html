@@ -626,7 +626,7 @@ body {
     </div>
     <div class="receipt" id="receiptContent"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <button class="btn-action-secondary" onclick="printReceipt()">طباعة الفاتورة</button>
+      <button class="btn-action-secondary" onclick="printReceipt()" style="font-weight:800;">🖨️ طباعة الفاتورة (Rongta 80mm)</button>
       <button class="btn-action-primary" onclick="finishAndResetOrder()">طلب جديد</button>
     </div>
   </div>
@@ -726,6 +726,7 @@ body {
 <script type="module">
 import AuthService, { TableManager, TABLE_STATUS, TABLE_STATUS_LABELS } from './auth.js';
 import DataService from './js/dataService.js';
+import ThermalPrinter from './js/thermalPrinter.js';
 
 // تحميل بيانات الأقسام والأصناف والطيارين من data/ وزرعها في الكاش المحلي
 await DataService.init(['categories', 'items', 'orders', 'stock', 'recipes', 'guardLogs', 'captains']);
@@ -1297,7 +1298,10 @@ function deductRecipeStock(itemsList) {
 // -------------------------------------------------------------
 // Receipts
 // -------------------------------------------------------------
+let activeReceiptInvoice = null;
+
 function showReceipt(inv) {
+  activeReceiptInvoice = inv;
   const payLabels = { cash:'كاش', card:'فيزا', transfer:'تحويل', officer:'أوفيسير' };
   const typeLabels = { dine:'صالة', take:'تيك أواي', delivery:'ديليفري' };
 
@@ -1316,13 +1320,17 @@ function showReceipt(inv) {
     `;
   }
 
+  const cfg = ThermalPrinter.getPrinterConfig();
+
   document.getElementById('receiptContent').innerHTML = `
-    <div style="text-align:center;font-weight:800;font-size:15px;">CashierSystem</div>
+    <div style="text-align:center;font-weight:800;font-size:16px;">${cfg.storeName || 'CashierSystem'}</div>
     <div style="text-align:center;font-size:11px;color:var(--text-muted);margin-bottom:8px;">${new Date().toLocaleString('ar-EG')}</div>
-    <div class="r-row"><span>رقم الفاتورة:</span><span>#${inv.id}</span></div>
+    <div class="r-row"><span>رقم الفاتورة:</span><strong>#${inv.id}</strong></div>
     <div class="r-row"><span>النوع:</span><span>${typeLabels[inv.type] || inv.type}</span></div>
     ${inv.tableLabel ? `<div class="r-row"><span>الطاولة:</span><span>${inv.tableLabel}</span></div>` : ''}
     ${inv.customer ? `<div class="r-row"><span>العميل:</span><span>${inv.customer}</span></div>` : ''}
+    ${inv.customerPhone ? `<div class="r-row"><span>الهاتف:</span><span>${inv.customerPhone}</span></div>` : ''}
+    ${inv.dAddr ? `<div class="r-row" style="font-size:11px;"><span>العنوان:</span><span>${inv.dAddr}</span></div>` : ''}
     ${inv.waiter ? `<div class="r-row"><span>الويتر:</span><span>${inv.waiter}</span></div>` : ''}
     <hr style="border:none;border-top:1px dashed var(--border-strong);margin:6px 0;" />
     ${inv.items.map(i => `
@@ -1337,31 +1345,37 @@ function showReceipt(inv) {
     ${inv.discount > 0 ? `<div class="r-row"><span>خصم:</span><span>- ${(inv.discount).toLocaleString('ar-EG')} ج</span></div>` : ''}
     <div class="r-row r-total"><span>الإجمالي النهائي:</span><span>${(inv.total||0).toLocaleString('ar-EG')} ج</span></div>
     <div class="r-row" style="margin-top:6px;font-size:12px;"><span>طريقة السداد:</span><span>${payLabels[inv.payMethod] || inv.payMethod}</span></div>
+    <div style="margin-top:10px;text-align:center;font-size:10.5px;color:var(--text-muted);background:#f1f5f9;padding:4px;border-radius:4px;">
+      🖨️ مجهزة لطابعة Rongta RP336 (عرض 80 مم)
+    </div>
   `;
+
   openModal('receiptModal');
+
+  // إذا كانت الطباعة التلقائية مفعلة، أرسل الفاتورة للطابعة فوراً
+  if (cfg.autoPrint === 'enabled') {
+    showToast('جاري إرسال الفاتورة تلقائيًا لطابعة Rongta RP336...');
+    ThermalPrinter.printReceipt(inv).catch(err => {
+      console.warn('Auto print notice:', err);
+    });
+  }
 }
 
 window.printReceipt = function() {
-  const content = document.getElementById('receiptContent').innerHTML;
-  const w = window.open('', '_blank', 'width=380,height=600');
-  w.document.write(`
-    <html dir="rtl">
-    <head>
-      <title>طباعة الفاتورة</title>
-      <style>body{font-family:sans-serif;padding:20px;font-size:13px;}.r-row{display:flex;justify-content:space-between;padding:3px 0;}.r-total{font-weight:bold;font-size:15px;}</style>
-    </head>
-    <body>
-      ${content}
-      <br/><button onclick="window.print()">طباعة</button>
-    </body>
-    </html>
-  `);
-  w.document.close();
+  if (!activeReceiptInvoice) {
+    showToast('لا توجد فاتورة نشطة للطباعة');
+    return;
+  }
+  showToast('جاري تجهيز وطباعة الفاتورة على طابعة Rongta RP336 (80 مم)...');
+  ThermalPrinter.printReceipt(activeReceiptInvoice).catch(err => {
+    showToast('تعذر فتح أمر الطباعة: ' + err.message);
+  });
 };
 
 window.finishAndResetOrder = function() {
   order = [];
   selectedTable = null;
+  activeReceiptInvoice = null;
   document.getElementById('discountVal').value = '';
   document.getElementById('tableSelector').value = '';
   hideTableSessionBanner();
