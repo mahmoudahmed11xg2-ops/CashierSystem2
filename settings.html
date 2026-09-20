@@ -703,7 +703,9 @@ window.manualPushAllToGH = async function() {
     return;
   }
 
-  const ok = confirm('هل تريد رفع كل بيانات الكاشير والمخازن والمنيو الحالية إلى GitHub لحفظها سحابياً؟');
+  const ok = confirm(`هل تريد رفع بيانات الإعدادات والكتالوج والعملاء الحالية إلى GitHub؟
+
+ملاحظة: الطاولات المفتوحة، الـRounds، الطلبات، الفواتير، الورديات والمصروفات وبيانات التشغيل الحية لن يتم رفعها إلى GitHub حفاظاً عليها.`);
   if (!ok) return;
 
   showToast('جاري رفع كافة ملفات البيانات إلى GitHub...');
@@ -711,8 +713,8 @@ window.manualPushAllToGH = async function() {
     const res = await DataService.pushAllToGitHub();
     showCloudModal({
       title: 'تم الرفع إلى السحابة بنجاح! 🚀',
-      message: `تم رفع وتحديث ${res.totalPushed} ملف بيانات بنجاح إلى مستودع (${res.repoName}) على GitHub!\n\n` +
-               `الآن قاعدة بياناتك السحابية جاهزة ومكتملة، ويمكنك الدخول من أي جهاز وسحب البيانات فوراً.`,
+      message: `تم رفع وتحديث ${res.totalPushed} ملف إعدادات/كتالوج بنجاح إلى مستودع (${res.repoName}) على GitHub!\n\n` +
+               `بيانات التشغيل الحية مثل الطاولات والـRounds والطلبات والفواتير لم يتم لمسها.`,
       type: 'success'
     });
   } catch (err) {
@@ -736,10 +738,10 @@ window.manualPullAllFromGH = async function() {
     return;
   }
 
-  const ok = confirm('تنبيه: سيتم تنزيل أحدث نسخة من البيانات من مستودع GitHub واستبدال البيانات المحلية بها. متابعة؟');
+  const ok = confirm('تنبيه: سيتم تنزيل أحدث نسخة من بيانات الإعدادات والكتالوج والعملاء من GitHub. لن يتم استبدال الطاولات المفتوحة أو الـRounds أو الطلبات أو الفواتير أو بيانات التشغيل الحية. متابعة؟');
   if (!ok) return;
 
-  showToast('جاري سحب كافة البيانات من مستودع GitHub...');
+  showToast('جاري سحب بيانات الإعدادات والكتالوج والعملاء من GitHub...');
   try {
     const res = await DataService.pullAllFromGitHub();
     showCloudModal({

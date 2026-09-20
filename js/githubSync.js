@@ -4,6 +4,24 @@
 
 const CONFIG_KEY = 'cs_github_sync_config';
 
+// Safety boundary: GitHub must never be used as the source of truth for live
+// restaurant operations. These paths stay local/server-side.
+const GITHUB_BLOCKED_PATHS = new Set([
+  'data/tables/tables.json',
+  'data/inventory/stock.json',
+  'data/transactions/orders.json',
+  'data/transactions/expenses.json',
+  'data/transactions/guard-logs.json',
+  'data/transactions/shifts-log.json',
+  'data/transactions/active-shift.json'
+]);
+
+function assertGitHubPathAllowed(path) {
+  if (GITHUB_BLOCKED_PATHS.has(path)) {
+    throw new Error(`حماية البيانات: الملف ${path} خاص ببيانات التشغيل ولا يُسمح بمزامنته مع GitHub.`);
+  }
+}
+
 export function getGitHubConfig() {
   try {
     const raw = localStorage.getItem(CONFIG_KEY);
@@ -70,6 +88,7 @@ export async function checkGitHubRepoAccess(customCfg = null) {
 
 // دالة لجلب محتوى ملف من مستودع GitHub
 export async function fetchFileFromGitHub(path) {
+  assertGitHubPathAllowed(path);
   const cfg = getGitHubConfig();
   if (!cfg.token || !cfg.repo) return null;
 
@@ -125,6 +144,7 @@ export async function fetchFileFromGitHub(path) {
 
 // دالة لحفظ/تحديث ملف في مستودع GitHub مع إرجاع الخطأ بالتفصيل
 export async function saveFileToGitHub(path, contentObject, commitMessage = 'Auto-sync from Cashier System') {
+  assertGitHubPathAllowed(path);
   const cfg = getGitHubConfig();
   if (!cfg.token || !cfg.repo) {
     throw new Error('يرجى ملء بيانات المستودع والـ Token أولاً');

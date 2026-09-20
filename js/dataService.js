@@ -24,6 +24,20 @@ export const DOMAINS = {
   activeShift:   { key: 'cs_active_shift', file: 'data/transactions/active-shift.json', isObject: true, nullable: true }
 };
 
+// GitHub is used only for master/configuration data. Live operational data
+// (tables, open sessions, rounds, orders, shifts, expenses, guard logs and
+// current stock) must never be pulled from GitHub or pushed there by Auto Sync.
+// The local/server data layer remains authoritative for those domains.
+export const GITHUB_SYNC_DOMAINS = new Set([
+  'categories', 'items', 'recipes',
+  'customers', 'suppliers', 'captains', 'staff',
+  'storeConfig'
+]);
+
+export const LIVE_OPERATION_DOMAINS = new Set([
+  'tables', 'orders', 'expenses', 'guardLogs', 'shiftsLog', 'activeShift', 'stock'
+]);
+
 export const DEFAULT_CATEGORIES = [
   { id: 1, name: "مشويات" },
   { id: 2, name: "مقبلات وسلطات" },
@@ -38,8 +52,10 @@ for (const [n, d] of Object.entries(DOMAINS)) KEY_TO_DOMAIN[d.key] = n;
 // ── إدارة "بيانات لم تُرفع بعد" (dirty flags تدوم بين تحديثات الصفحات) ──
 const DIRTY_KEY = 'cs_dirty_domains';
 function getDirtySet() {
-  try { return new Set(JSON.parse(localStorage.getItem(DIRTY_KEY) || '[]')); }
-  catch { return new Set(); }
+  try {
+    const raw = JSON.parse(localStorage.getItem(DIRTY_KEY) || '[]');
+    return new Set(raw.filter(name => GITHUB_SYNC_DOMAINS.has(name)));
+  } catch { return new Set(); }
 }
 function markDirty(name) {
   const s = getDirtySet(); s.add(name);
@@ -81,7 +97,6 @@ function connectRealtimeServer() {
         }
         if (domName && DOMAINS[domName]) {
           writeCache(DOMAINS[domName].key, value);
-          clearDirty(domName);
           window.dispatchEvent(new CustomEvent('cs:datachange', { detail: { domain: domName, value, remote: true } }));
           broadcastChange(domName, value, true);
         }
@@ -111,7 +126,8 @@ async function syncFromGitHubQuietly(domainNames = []) {
   if (!cfg.token || !cfg.repo || !cfg.autoSync) return;
 
   const dirty = getDirtySet();
-  const list = domainNames.length ? domainNames : Object.keys(DOMAINS);
+  const requested = domainNames.length ? domainNames : [...GITHUB_SYNC_DOMAINS];
+  const list = requested.filter(name => GITHUB_SYNC_DOMAINS.has(name));
 
   for (const name of list) {
     const domain = DOMAINS[name];
@@ -192,10 +208,15 @@ export function onDataChange(domains, callback) {
 // ── رفع للسحابة: 800ms فقط + فلاش عند قفل الصفحة ──
 const pendingSyncTimers = {};
 function schedulePushToGitHub(name, value) {
+  if (!GITHUB_SYNC_DOMAINS.has(name)) return;
   const cfg = getGitHubConfig();
   const domain = DOMAINS[name];
   if (!domain || !domain.file) return;
-  if (!cfg.token || !cfg.repo || !cfg.autoSync) return; // يتسخّر لحد ما يتظبط GitHub
+
+  // Mark it dirty until GitHub explicitly confirms the write. This is
+  // intentionally independent from the local/server persistence status.
+  markDirty(name);
+  if (!cfg.token || !cfg.repo || !cfg.autoSync) return;
 
   if (pendingSyncTimers[name]) clearTimeout(pendingSyncTimers[name]);
   pendingSyncTimers[name] = setTimeout(async () => {
@@ -215,6 +236,7 @@ if (typeof window !== 'undefined') {
     const cfg = getGitHubConfig();
     if (!cfg.token || !cfg.repo) return;
     for (const name of dirty) {
+      if (!GITHUB_SYNC_DOMAINS.has(name)) continue;
       const domain = DOMAINS[name];
       const value = readCache(domain.key);
       if (value === null) continue;
@@ -319,13 +341,11 @@ function set(name, value) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ value })
   }).then(res => {
-    if (res.ok) {
-      clearDirty(name);
-    } else {
+    if (!res.ok && GITHUB_SYNC_DOMAINS.has(name)) {
       markDirty(name);
     }
   }).catch(() => {
-    markDirty(name);
+    if (GITHUB_SYNC_DOMAINS.has(name)) markDirty(name);
   });
 
   // 5) بث فوري عبر Socket.io لجميع الأجهزة والشاشات المتصلة بالسيرفر
@@ -357,14 +377,16 @@ async function pushAllToGitHub() {
   if (!cfg.token || !cfg.repo) throw new Error('يرجى ملء بيانات المستودع والـ Token في صفحة الإعدادات.');
   const repoInfo = await checkGitHubRepoAccess(cfg);
   const results = [];
-  for (const [name, domain] of Object.entries(DOMAINS)) {
+
+  for (const name of GITHUB_SYNC_DOMAINS) {
+    const domain = DOMAINS[name];
     const val = get(name);
-    if (val !== undefined && val !== null) {
-      await saveFileToGitHub(domain.file, val, `Manual Push: ${name}`);
-      clearDirty(name);
-      results.push({ name, file: domain.file, ok: true });
-    }
+    if (val === undefined || val === null) continue;
+    await saveFileToGitHub(domain.file, val, `Manual Push: ${name}`);
+    clearDirty(name);
+    results.push({ name, file: domain.file, ok: true });
   }
+
   return { results, totalPushed: results.length, repoName: repoInfo.fullName };
 }
 
@@ -374,17 +396,25 @@ async function pullAllFromGitHub() {
   const repoInfo = await checkGitHubRepoAccess(cfg);
   const results = [];
   const dirty = getDirtySet();
-  for (const [name, domain] of Object.entries(DOMAINS)) {
-    if (dirty.has(name)) continue; // لا تسحب فوق بيانات محلية أحدث
+
+  for (const name of GITHUB_SYNC_DOMAINS) {
+    if (dirty.has(name)) {
+      // Never replace a local copy whose GitHub update is still pending.
+      continue;
+    }
+    const domain = DOMAINS[name];
     const res = await fetchFileFromGitHub(domain.file);
     if (res && res.content !== undefined) {
       writeCache(domain.key, res.content);
       window.dispatchEvent(new CustomEvent('cs:datachange', { detail: { domain: name, value: res.content, remote: true } }));
-      broadcastChange(name, true);
+      broadcastChange(name, res.content, true);
       results.push({ name, file: domain.file, ok: true });
     }
   }
-  if (results.length === 0) throw new Error(`المستودع (${repoInfo.fullName}) لا يحتوي على بيانات بعد — ارفع أولاً بزر "رفع بيانات المحل للسحابة".`);
+
+  if (results.length === 0) {
+    throw new Error(`لم يتم سحب أي ملف. إما أن بيانات GitHub غير موجودة أو توجد تعديلات محلية لم تُرفع بعد.`);
+  }
   return { results, totalPulled: results.length, repoName: repoInfo.fullName };
 }
 

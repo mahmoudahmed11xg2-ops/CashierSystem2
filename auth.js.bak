@@ -23,9 +23,6 @@ let auth = null;
 let db = null;
 let fbAuth = null;
 let fbFirestore = null;
-let secondaryApp = null;
-let secondaryAuth = null;
-let secondaryDb = null;
 
 export const loadFirebasePromise = (async () => {
   if (app) return { app, auth, db, fbAuth, fbFirestore };
@@ -417,8 +414,7 @@ export const AuthService = {
           }
         }
 
-        const validRoles = ['admin', 'om', 'manager', 'cashier', 'accounts'];
-        const resolvedRole = isMahmoudTarget ? 'admin' : (validRoles.includes(firestoreDocData?.role) ? firestoreDocData.role : 'cashier');
+        const resolvedRole = isMahmoudTarget ? 'admin' : (firestoreDocData?.role || 'admin');
         const resolvedName = firestoreDocData?.name || firestoreDocData?.fullName || (isMahmoudTarget ? 'Mahmoud Mostafa' : (firebaseUser.displayName || cleanId.split('@')[0]));
 
         // Find or create profile
@@ -504,90 +500,37 @@ export const AuthService = {
   },
 
   // Create user (Admin only)
-  // IMPORTANT: use a secondary Firebase Auth instance so creating a staff account
-  // never signs the currently logged-in Admin out or changes the Admin session.
   createUser: async ({ username, email, fullName, password, role, permissions = [], active = true }) => {
     const users = AuthService.getUsers();
-    const cleanUsername = String(username || '').trim().toLowerCase();
-    const cleanEmail = String(email || `${cleanUsername}@system.local`).trim().toLowerCase();
-    const cleanName = String(fullName || '').trim() || cleanUsername;
-    const selectedRole = ['admin', 'om', 'manager', 'cashier', 'accounts'].includes(role) ? role : 'cashier';
+    const cleanUsername = username.trim().toLowerCase();
+    const cleanEmail = (email || `${cleanUsername}@system.local`).trim().toLowerCase();
 
-    if (!cleanUsername || !cleanEmail || !password) throw new Error('بيانات المستخدم غير مكتملة');
-    if (String(password).length < 6) throw new Error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-    if (users.some(u => String(u.username || '').toLowerCase() === cleanUsername)) {
+    if (users.some(u => u.username.toLowerCase() === cleanUsername)) {
       throw new Error('اسم المستخدم موجود بالفعل');
     }
-    if (users.some(u => String(u.email || '').toLowerCase() === cleanEmail)) {
+    if (users.some(u => (u.email || '').toLowerCase() === cleanEmail)) {
       throw new Error('البريد الإلكتروني مسجل لمستخدم آخر');
     }
 
-    await loadFirebasePromise;
-    if (!auth || !fbAuth || !db || !fbFirestore) {
-      throw new Error('Firebase غير متاح. لم يتم إنشاء الحساب محليًا حتى لا يصبح الحساب غير متزامن مع Firebase.');
-    }
-
     let firebaseUid = null;
-    let firebaseCreated = false;
-
-    try {
-      // Create a second Firebase app/auth instance. The Admin remains signed in on the primary app.
-      const fbAppModule = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
-      const existingApps = fbAppModule.getApps();
-      secondaryApp = existingApps.find(a => a.name === 'staff-account-creator') ||
-        fbAppModule.initializeApp(firebaseConfig, 'staff-account-creator');
-      secondaryAuth = fbAuth.getAuth(secondaryApp);
-      secondaryDb = fbFirestore.getFirestore(secondaryApp);
-
-      const userCred = await fbAuth.createUserWithEmailAndPassword(secondaryAuth, cleanEmail, password);
-      firebaseUid = userCred.user.uid;
-      firebaseCreated = true;
-
-      const profile = {
-        uid: firebaseUid,
-        username: cleanUsername,
-        email: cleanEmail,
-        name: cleanName,
-        fullName: cleanName,
-        role: selectedRole,
-        permissions: permissions.length ? permissions : [selectedRole],
-        active: Boolean(active),
-        createdAt: new Date().toISOString(),
-        createdBy: auth.currentUser?.uid || null
-      };
-
-      // Write the role/profile to Firestore using the newly-created user's auth context.
-      await fbFirestore.setDoc(fbFirestore.doc(secondaryDb, 'users', firebaseUid), profile, { merge: true });
-      await fbAuth.signOut(secondaryAuth);
-    } catch (err) {
-      if (firebaseCreated && secondaryAuth?.currentUser) {
-        try { await fbAuth.deleteUser(secondaryAuth.currentUser); } catch (_) {}
+    // Attempt Firebase User creation if email and auth exist
+    if (auth && fbAuth && cleanEmail.includes('@')) {
+      try {
+        const userCred = await fbAuth.createUserWithEmailAndPassword(auth, cleanEmail, password);
+        firebaseUid = userCred.user.uid;
+      } catch (err) {
+        console.warn("Firebase user registration notice:", err.message);
       }
-      try { if (secondaryAuth?.currentUser) await fbAuth.signOut(secondaryAuth); } catch (_) {}
-      if (firebaseCreated) {
-        throw new Error('تم إنشاء حساب Firebase لكن فشل حفظ بيانات الدور في Firestore. لم يتم حفظ الحساب محليًا. راجع Firestore Security Rules ثم أعد المحاولة.');
-      }
-      const code = err?.code || '';
-      const friendly = {
-        'auth/email-already-in-use': 'البريد الإلكتروني مستخدم بالفعل في Firebase',
-        'auth/invalid-email': 'البريد الإلكتروني غير صحيح',
-        'auth/weak-password': 'كلمة المرور ضعيفة؛ استخدم 6 أحرف على الأقل',
-        'auth/network-request-failed': 'تعذر الاتصال بـ Firebase. تحقق من الإنترنت',
-        'permission-denied': 'Firebase رفض حفظ بيانات الدور في Firestore. راجع Firestore Security Rules'
-      };
-      throw new Error(friendly[code] || err?.message || 'فشل إنشاء حساب Firebase');
     }
 
-    // Local storage is only a cache/profile mirror, never the account authority.
     const newUser = {
-      id: firebaseUid,
-      firebaseUid,
+      id: firebaseUid || 'user_' + Date.now(),
       username: cleanUsername,
       email: cleanEmail,
-      fullName: cleanName,
+      fullName: fullName.trim() || cleanUsername,
       password: btoa(password),
-      role: selectedRole,
-      permissions: permissions.length ? permissions : [selectedRole],
+      role: role || 'cashier',
+      permissions: permissions.length ? permissions : [role],
       active: Boolean(active),
       createdAt: new Date().toISOString()
     };
