@@ -419,7 +419,7 @@ table.orders-table tr:hover td { background: var(--surface2); }
     </div>
     <div class="invoice-preview" id="orderModalBody"></div>
     <div style="display:flex;justify-content:flex-end;gap:8px;">
-      <button class="btn-table-action" onclick="printModalInvoice()" style="background:#1c69d4;color:#fff;font-weight:700;">🖨️ طباعة الفاتورة (Rongta 80mm)</button>
+      <button class="btn-table-action" onclick="printModalInvoice()">طباعة الفاتورة</button>
       <button class="btn-table-action" onclick="closeModal('orderModal')">إغلاق</button>
     </div>
   </div>
@@ -430,7 +430,6 @@ table.orders-table tr:hover td { background: var(--surface2); }
 <script type="module">
 import AuthService from './auth.js';
 import DataService from './js/dataService.js';
-import ThermalPrinter from './js/thermalPrinter.js';
 
 // تحميل الطلبات وسجل الرقابة من السيرفر
 await DataService.init(['orders', 'guardLogs']);
@@ -518,7 +517,6 @@ window.renderOrdersTable = function() {
         <td>
           <div style="display:flex;gap:6px;">
             <button class="btn-table-action" onclick="viewOrderDetails('${o.id}')">عرض</button>
-            <button class="btn-table-action" style="color:#1c69d4;font-weight:700;" onclick="directPrintOrder('${o.id}')" title="طباعة فورية لطابعة Rongta">🖨️ طباعة</button>
             <button class="btn-table-action danger" onclick="deleteOrder('${o.id}')">حذف</button>
           </div>
         </td>
@@ -527,26 +525,10 @@ window.renderOrdersTable = function() {
   }).join('');
 };
 
-let currentModalOrder = null;
-
-window.directPrintOrder = function(orderId) {
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
-  const o = orders.find(x => String(x.id) === String(orderId));
-  if (!o) {
-    showToast('لم يتم العثور على الفاتورة');
-    return;
-  }
-  showToast('جاري إرسال الفاتورة #' + o.id + ' لطابعة Rongta RP336 (80 مم)...');
-  ThermalPrinter.printReceipt(o).catch(err => {
-    showToast('خطأ في الطباعة: ' + err.message);
-  });
-};
-
 window.viewOrderDetails = function(orderId) {
   const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
   const o = orders.find(x => String(x.id) === String(orderId));
   if (!o) return;
-  currentModalOrder = o;
 
   const typeLabels = { dine:'صالة', take:'تيك أواي', delivery:'ديليفري' };
   const payLabels = { cash:'كاش', card:'فيزا', transfer:'تحويل', officer:'أوفيسير' };
@@ -598,14 +580,23 @@ window.viewOrderDetails = function(orderId) {
 };
 
 window.printModalInvoice = function() {
-  if (!currentModalOrder) {
-    showToast('لم يتم اختيار فاتورة للطباعة');
-    return;
-  }
-  showToast('جاري إرسال الفاتورة #' + currentModalOrder.id + ' لطابعة Rongta RP336 (80 مم)...');
-  ThermalPrinter.printReceipt(currentModalOrder).catch(err => {
-    showToast('خطأ في الطباعة: ' + err.message);
-  });
+  const content = document.getElementById('orderModalBody').innerHTML;
+  const w = window.open('', '_blank', 'width=380,height=600');
+  w.document.write(`
+    <html dir="rtl">
+    <head>
+      <title>طباعة الفاتورة</title>
+      <style>body{font-family:sans-serif;padding:20px;font-size:13px;}.inv-row{display:flex;justify-content:space-between;padding:3px 0;}.inv-total{font-weight:bold;font-size:15px;}</style>
+    </head>
+    <body>
+      <div style="text-align:center;font-weight:bold;font-size:16px;">CashierSystem</div>
+      <br/>
+      ${content}
+      <br/><button onclick="window.print()">طباعة</button>
+    </body>
+    </html>
+  `);
+  w.document.close();
 };
 
 window.deleteOrder = function(orderId) {

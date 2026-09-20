@@ -3,7 +3,10 @@
 // ============================================================
 
 const { app, BrowserWindow, Menu } = require('electron');
+const { fork } = require('child_process');
 const path = require('path');
+
+let localServer;
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -19,8 +22,9 @@ function createWindow() {
     }
   });
 
-  // فتح ملف النظام المحلي مباشرة بدون الحاجة لأي سيرفر
-  mainWindow.loadFile(path.join(__dirname, '..', 'index.html'));
+  // تشغيل قاعدة البيانات المحلية أولاً. فتح التطبيق كملف file:// كان
+  // يجعل حفظ JSON والمزامنة بين الأجهزة غير متاحين.
+  mainWindow.loadURL('http://127.0.0.1:4000/index.html');
 
   // تخصيص القوائم العلوية
   const menuTemplate = [
@@ -50,7 +54,11 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  createWindow();
+  localServer = fork(path.join(__dirname, '..', 'server', 'index.js'), [], {
+    cwd: path.join(__dirname, '..'), stdio: 'ignore'
+  });
+  // Give Express a moment to bind the port before loading the UI.
+  setTimeout(createWindow, 600);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -61,4 +69,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  if (localServer && !localServer.killed) localServer.kill();
 });

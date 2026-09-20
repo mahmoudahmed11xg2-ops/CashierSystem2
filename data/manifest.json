@@ -14,6 +14,7 @@
     { "domain": "suppliers",   "path": "crm/suppliers.json",          "description": "بيانات الموردين وأرصدتهم" },
     { "domain": "captains",    "path": "crm/captains.json",           "description": "بيانات مناديب التوصيل" },
     { "domain": "staff",       "path": "crm/staff.json",              "description": "بيانات العاملين والموظفين" },
+    { "domain": "users",       "path": "settings/users.json",         "description": "حسابات المستخدمين والصلاحيات" },
     { "domain": "storeConfig", "path": "settings/store-config.json",  "description": "بيانات المحل الافتراضية وإعدادات الطباعة" }
   ]
 }

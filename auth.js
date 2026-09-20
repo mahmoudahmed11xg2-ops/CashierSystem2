@@ -258,13 +258,14 @@ export function seedUsersIfEmpty() {
   });
 
   if (modified) {
-    localStorage.setItem('cs_users', JSON.stringify(existing));
+    DataService.set('users', existing);
   }
   return existing;
 }
 
-// Auto seed on load
-seedUsersIfEmpty();
+// اسحب حسابات النظام من قاعدة البيانات المركزية قبل إنشاء الحسابات الافتراضية.
+// هذا يمنع جهاز جديد من الكتابة فوق الحسابات الموجودة في جهاز الكاشير الرئيسي.
+DataService.init(['users']).then(seedUsersIfEmpty).catch(seedUsersIfEmpty);
 
 // ============================================================
 //  Auth Service
@@ -288,7 +289,7 @@ export const AuthService = {
     });
     if (dirty) {
       try {
-        localStorage.setItem('cs_users', JSON.stringify(users));
+        DataService.set('users', users);
       } catch (e) {}
     }
     return users;
@@ -308,7 +309,7 @@ export const AuthService = {
 
   // Save users
   saveUsers: (users) => {
-    localStorage.setItem('cs_users', JSON.stringify(users));
+    DataService.set('users', users);
   },
 
   // Current session
@@ -1005,7 +1006,7 @@ export const TableManager = {
     };
 
     orders.push(completedInvoice);
-    localStorage.setItem('cs_orders', JSON.stringify(orders));
+    DataService.set('orders', orders);
 
     // Reset Table to Cleaning or Available
     t.status = TABLE_STATUS.AVAILABLE;
@@ -1172,4 +1173,3 @@ if (typeof window !== 'undefined') {
 }
 
 export default AuthService;
-

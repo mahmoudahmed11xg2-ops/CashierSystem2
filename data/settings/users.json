@@ -1,0 +1,92 @@
+[
+  {
+    "id": "3SNhsc2ilvc42YWXhKpLzBO5Yu32",
+    "username": "mahmoud.mostfa",
+    "email": "mahmoud.mostfa@app.com",
+    "fullName": "Mahmoud Mostafa",
+    "role": "admin",
+    "active": true,
+    "createdAt": "2026-09-20T17:30:02.434Z",
+    "permissions": [
+      "all"
+    ],
+    "password": "MDExNTE0NzM3MjdtbQ=="
+  },
+  {
+    "id": "user_admin",
+    "username": "admin",
+    "email": "admin@system.local",
+    "fullName": "مدير النظام (Admin)",
+    "password": "YWRtaW4xMjM=",
+    "role": "admin",
+    "active": true,
+    "createdAt": "2026-09-20T17:30:02.100Z",
+    "permissions": [
+      "all"
+    ]
+  },
+  {
+    "id": "user_om",
+    "username": "om",
+    "email": "om@system.local",
+    "fullName": "مدير العمليات (OM)",
+    "password": "b20xMjM=",
+    "role": "om",
+    "active": true,
+    "createdAt": "2026-09-20T17:30:02.100Z",
+    "permissions": [
+      "operations",
+      "pos",
+      "tables",
+      "inventory",
+      "accounts"
+    ]
+  },
+  {
+    "id": "user_manager",
+    "username": "manager",
+    "email": "manager@system.local",
+    "fullName": "مدير الصالة (Manager)",
+    "password": "bWFuYWdlcjEyMw==",
+    "role": "manager",
+    "active": true,
+    "createdAt": "2026-09-20T17:30:02.100Z",
+    "permissions": [
+      "pos",
+      "tables",
+      "delivery",
+      "inventory",
+      "crm"
+    ]
+  },
+  {
+    "id": "user_cashier",
+    "username": "cashier",
+    "email": "cashier@system.local",
+    "fullName": "كاشير المناوبة (Cashier)",
+    "password": "Y2FzaGllcjEyMw==",
+    "role": "cashier",
+    "active": true,
+    "createdAt": "2026-09-20T17:30:02.100Z",
+    "permissions": [
+      "pos",
+      "tables",
+      "delivery"
+    ]
+  },
+  {
+    "id": "user_accounts",
+    "username": "accounts",
+    "email": "accounts@system.local",
+    "fullName": "محاسب الوردية (Accounts)",
+    "password": "YWNjb3VudHMxMjM=",
+    "role": "accounts",
+    "active": true,
+    "createdAt": "2026-09-20T17:30:02.100Z",
+    "permissions": [
+      "orders",
+      "accounts",
+      "expenses"
+    ]
+  }
+]

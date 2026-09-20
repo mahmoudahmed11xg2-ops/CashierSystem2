@@ -705,10 +705,6 @@ body {
 
 <script type="module">
 import AuthService, { TableManager, TABLE_STATUS, TABLE_STATUS_LABELS } from './auth.js';
-import DataService from './js/dataService.js';
-
-// تحميل بيانات الطاولات والأصناف والطلبات من السيرفر
-await DataService.init(['tables', 'items', 'orders', 'customers']);
 
 // Enforce RBAC
 if (!AuthService.enforcePage('tables.html')) {
