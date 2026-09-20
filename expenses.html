@@ -306,6 +306,7 @@ table.custom-table tr:hover td { background: var(--surface2); }
     <div class="nav-section-title">المبيعات والصالة</div>
     <button class="nav-item" onclick="navigate('pos.html')">الكاشير (POS)</button>
     <button class="nav-item" onclick="navigate('tables.html')">إدارة الطاولات</button>
+    <button class="nav-item" onclick="navigate('kitchen.html')">شاشة المطبخ (KDS)</button>
     <button class="nav-item" onclick="navigate('orders.html')">سجل الفواتير</button>
     <button class="nav-item" onclick="navigate('delivery.html')">طلبات الديليفري</button>
 
@@ -470,7 +471,7 @@ function showToast(msg) {
 // فوق، بدل ما كانت مكتوبة مباشرة هنا.
 
 window.renderExpensesTable = function() {
-  const expenses = JSON.parse(localStorage.getItem('cs_expenses') || '[]');
+  const expenses = DataService.get('expenses') || [];
   const search = (document.getElementById('searchExp').value || '').trim().toLowerCase();
 
   const filtered = expenses.filter(e => {
@@ -543,7 +544,7 @@ window.handleSaveExpense = function(e) {
     return;
   }
 
-  const expenses = JSON.parse(localStorage.getItem('cs_expenses') || '[]');
+  const expenses = DataService.get('expenses') || [];
   const newId = expenses.length > 0 ? (Math.max(...expenses.map(x => x.id || 0)) + 1) : 101;
 
   expenses.push({
@@ -569,7 +570,7 @@ window.deleteExpense = function(id) {
     return;
   }
 
-  let expenses = JSON.parse(localStorage.getItem('cs_expenses') || '[]');
+  let expenses = DataService.get('expenses') || [];
   expenses = expenses.filter(x => x.id !== id);
   DataService.set('expenses', expenses);
 

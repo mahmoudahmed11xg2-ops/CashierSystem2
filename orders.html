@@ -320,6 +320,7 @@ table.orders-table tr:hover td { background: var(--surface2); }
     <div class="nav-section-title">المبيعات والصالة</div>
     <button class="nav-item" onclick="navigate('pos.html')">الكاشير (POS)</button>
     <button class="nav-item" onclick="navigate('tables.html')">إدارة الطاولات</button>
+    <button class="nav-item" onclick="navigate('kitchen.html')">شاشة المطبخ (KDS)</button>
     <button class="nav-item active" onclick="navigate('orders.html')">سجل الفواتير</button>
     <button class="nav-item" onclick="navigate('delivery.html')">طلبات الديليفري</button>
 
@@ -375,13 +376,15 @@ table.orders-table tr:hover td { background: var(--surface2); }
         <button class="filter-btn" id="f-dine" onclick="setFilter('dine')">صالة</button>
         <button class="filter-btn" id="f-take" onclick="setFilter('take')">تيك أواي</button>
         <button class="filter-btn" id="f-delivery" onclick="setFilter('delivery')">ديليفري</button>
+        <button class="filter-btn" id="f-pending" onclick="setFilter('pending')">معلق السداد</button>
+        <button class="filter-btn" id="f-kitchen_ready" onclick="setFilter('kitchen_ready')">جاهز للتسليم 🔔</button>
       </div>
 
       <input 
         type="text" 
         id="searchOrders" 
         class="search-input" 
-        placeholder="بحث برقم الفاتورة أو العميل..." 
+        placeholder="بحث برقم الفاتورة أو العميل أو الطاولة..." 
         oninput="renderOrdersTable()" 
       />
     </div>
@@ -396,7 +399,8 @@ table.orders-table tr:hover td { background: var(--surface2); }
             <th>التفاصيل / الطاولة / العميل</th>
             <th>التاريخ والوقت</th>
             <th>الأصناف والـ Rounds</th>
-            <th>طريقة الدفع</th>
+            <th>حالة المطبخ</th>
+            <th>طريقة الدفع والحالة</th>
             <th>الإجمالي</th>
             <th>إجراءات</th>
           </tr>
@@ -472,41 +476,65 @@ window.setFilter = function(filter) {
 };
 
 window.renderOrdersTable = function() {
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const orders = DataService.get('orders') || JSON.parse(localStorage.getItem('cs_orders') || '[]');
   const search = (document.getElementById('searchOrders').value || '').trim().toLowerCase();
 
   const filtered = orders.filter(o => {
-    const matchFilter = currentFilter === 'all' || o.type === currentFilter;
+    let matchFilter = true;
+    if (currentFilter === 'all') matchFilter = true;
+    else if (currentFilter === 'dine') matchFilter = o.type === 'dine';
+    else if (currentFilter === 'take') matchFilter = o.type === 'take' || o.type === 'takeaway';
+    else if (currentFilter === 'delivery') matchFilter = o.type === 'delivery';
+    else if (currentFilter === 'pending') matchFilter = o.status === 'pending_payment';
+    else if (currentFilter === 'kitchen_ready') matchFilter = o.kitchenStatus === 'ready';
+
     const matchSearch = !search || 
       String(o.id).includes(search) || 
       (o.customer || '').toLowerCase().includes(search) ||
-      (o.tableLabel || '').toLowerCase().includes(search);
+      (o.tableLabel || '').toLowerCase().includes(search) ||
+      (o.items || []).some(it => (it.name || '').toLowerCase().includes(search));
     return matchFilter && matchSearch;
   }).reverse(); // Most recent first
 
   // Update stats
-  const totalRev = orders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+  const totalRev = orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
   document.getElementById('statOrdersCount').textContent = orders.length.toLocaleString('ar-EG');
   document.getElementById('statOrdersTotal').textContent = totalRev.toLocaleString('ar-EG') + ' ج';
   document.getElementById('statOrdersAvg').textContent = orders.length > 0 ? (totalRev / orders.length).toFixed(1) + ' ج' : '0 ج';
 
   const tbody = document.getElementById('ordersTbody');
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">لا توجد فواتير مسجلة تطابق التصفية</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted);">لا توجد فواتير مسجلة تطابق التصفية الحالية</td></tr>`;
     return;
   }
 
-  const typeLabels = { dine:'صالة', take:'تيك أواي', delivery:'ديليفري' };
+  const typeLabels = { dine:'صالة', take:'تيك أواي', takeaway:'تيك أواي', delivery:'ديليفري' };
   const payLabels = { cash:'كاش', card:'فيزا', transfer:'تحويل', officer:'أوفيسير' };
 
   tbody.innerHTML = filtered.map(o => {
     let target = '—';
     if (o.type === 'dine') target = o.tableLabel || ('طاولة ' + (o.tableNumber || o.tableId || '—'));
     else if (o.type === 'delivery') target = (o.customer || 'عميل توصيل') + (o.dAddr ? ` (${o.dAddr})` : '');
-    else target = o.customer || 'عميل خارجي';
+    else target = o.customer || 'عميل خارجي (سفري)';
 
     const roundsCount = (o.rounds || []).length;
     const itemsSummary = (o.items || []).map(i => `${i.name} × ${i.qty}`).join(', ');
+
+    // Kitchen status badge
+    let kitchenBadge = `<span class="badge" style="background:#fef3c7;color:#b45309;font-weight:700;">جديد بالمطبخ ⏳</span>`;
+    if (o.kitchenStatus === 'preparing') {
+      kitchenBadge = `<span class="badge" style="background:#e0e7ff;color:#4338ca;font-weight:700;">قيد التحضير 👨‍🍳</span>`;
+    } else if (o.kitchenStatus === 'ready') {
+      kitchenBadge = `<span class="badge" style="background:#dcfce7;color:#15803d;font-weight:700;">جاهز للتسليم 🔔</span>`;
+    } else if (o.kitchenStatus === 'served') {
+      kitchenBadge = `<span class="badge" style="background:#f1f5f9;color:#475569;font-weight:600;">تم التسليم 🍽️</span>`;
+    }
+
+    // Payment status badge
+    let payBadge = `<span class="badge" style="background:#ecfdf5;color:#047857;font-weight:700;">مدفوع (${payLabels[o.payMethod] || o.payMethod || 'كاش'})</span>`;
+    if (o.status === 'pending_payment') {
+      payBadge = `<span class="badge" style="background:#fee2e2;color:#b91c1c;font-weight:800;">معلق السداد ⚠️</span>`;
+    }
 
     return `
       <tr>
@@ -514,14 +542,16 @@ window.renderOrdersTable = function() {
         <td><span class="badge ${o.type}">${typeLabels[o.type] || o.type}</span></td>
         <td>${target}</td>
         <td style="color:var(--text-muted);font-size:12px;">${o.date || ''} ${o.time || ''}</td>
-        <td style="max-width:260px;font-size:12px;">
+        <td style="max-width:240px;font-size:12px;">
           ${roundsCount > 0 ? `<div style="font-weight:700;color:var(--primary);">${roundsCount} Round بالجلسة</div>` : ''}
           <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${itemsSummary}">${itemsSummary || '—'}</div>
         </td>
-        <td>${payLabels[o.payMethod] || o.payMethod}</td>
+        <td>${kitchenBadge}</td>
+        <td>${payBadge}</td>
         <td><strong style="color:var(--primary);">${(o.total || 0).toLocaleString('ar-EG')} ج</strong></td>
         <td>
-          <div style="display:flex;gap:6px;">
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            ${o.status === 'pending_payment' ? `<button class="btn-table-action" style="color:#047857;background:#ecfdf5;border-color:#a7f3d0;font-weight:800;" onclick="settlePendingOrder('${o.id}')" title="تحصيل قيمة الفاتورة وإتمام السداد">💳 سداد</button>` : ''}
             <button class="btn-table-action" onclick="viewOrderDetails('${o.id}')">عرض</button>
             <button class="btn-table-action" style="color:#1c69d4;font-weight:700;" onclick="directPrintOrder('${o.id}')" title="طباعة فورية لطابعة Rongta">🖨️ طباعة</button>
             <button class="btn-table-action danger" onclick="deleteOrder('${o.id}')">حذف</button>
@@ -532,10 +562,22 @@ window.renderOrdersTable = function() {
   }).join('');
 };
 
+window.settlePendingOrder = function(orderId) {
+  const orders = DataService.get('orders') || JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const idx = orders.findIndex(x => String(x.id) === String(orderId));
+  if (idx >= 0) {
+    orders[idx].status = 'paid';
+    orders[idx].paidAt = new Date().toISOString();
+    DataService.set('orders', orders);
+    showToast(`✅ تم تأكيد سداد الفاتورة #${orderId} بنجاح`);
+    renderOrdersTable();
+  }
+};
+
 let currentModalOrder = null;
 
 window.directPrintOrder = function(orderId) {
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const orders = DataService.get('orders') || JSON.parse(localStorage.getItem('cs_orders') || '[]');
   const o = orders.find(x => String(x.id) === String(orderId));
   if (!o) {
     showToast('لم يتم العثور على الفاتورة');
@@ -548,7 +590,7 @@ window.directPrintOrder = function(orderId) {
 };
 
 window.viewOrderDetails = function(orderId) {
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const orders = DataService.get('orders') || JSON.parse(localStorage.getItem('cs_orders') || '[]');
   const o = orders.find(x => String(x.id) === String(orderId));
   if (!o) return;
   currentModalOrder = o;
@@ -620,7 +662,7 @@ window.deleteOrder = function(orderId) {
     return;
   }
 
-  let orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  let orders = DataService.get('orders') || JSON.parse(localStorage.getItem('cs_orders') || '[]');
   const target = orders.find(o => String(o.id) === String(orderId));
   const val = target ? target.total : 0;
 

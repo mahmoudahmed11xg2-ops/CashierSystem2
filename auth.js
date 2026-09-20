@@ -77,7 +77,6 @@ export const ROLE_ALLOWED_PAGES = {
     'orders.html',
     'tables.html',
     'delivery.html',
-    'kitchen.html',
     'inventory.html',
     'accounts.html',
     'expenses.html',
@@ -92,7 +91,6 @@ export const ROLE_ALLOWED_PAGES = {
     'orders.html',
     'tables.html',
     'delivery.html',
-    'kitchen.html',
     'inventory.html',
     'accounts.html',
     'expenses.html',
@@ -107,7 +105,6 @@ export const ROLE_ALLOWED_PAGES = {
     'orders.html',
     'tables.html',
     'delivery.html',
-    'kitchen.html',
     'inventory.html',
     'crm.html',
     'guard.html',
@@ -127,7 +124,7 @@ export const ROLE_ALLOWED_PAGES = {
     'orders.html',
     'accounts.html',
     'expenses.html'
-    // Excludes: settings.html, pos.html, tables.html, delivery.html, kitchen.html, inventory.html, crm.html, guard.html
+    // Excludes: settings.html, pos.html, tables.html, delivery.html, inventory.html, crm.html, guard.html
   ]
 };
 

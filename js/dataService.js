@@ -17,11 +17,11 @@ export const DOMAINS = {
   captains:    { key: 'cs_captains',     file: 'data/crm/captains.json' },
   staff:       { key: 'cs_staff',        file: 'data/crm/staff.json' },
   storeConfig: { key: 'cs_configs',      file: 'data/settings/store-config.json', isObject: true },
-  orders:      { key: 'cs_orders',       file: 'data/transactions/orders.json' },
-  expenses:    { key: 'cs_expenses',     file: 'data/transactions/expenses.json' },
-  guardLogs:   { key: 'cs_guard_logs',   file: 'data/transactions/guard-logs.json' },
-  shiftsLog:   { key: 'cs_shifts_log',   file: 'data/transactions/shifts-log.json' },
-  activeShift: { key: 'cs_active_shift', file: 'data/transactions/active-shift.json', isObject: true, nullable: true }
+  orders:        { key: 'cs_orders',       file: 'data/transactions/orders.json' },
+  expenses:      { key: 'cs_expenses',     file: 'data/transactions/expenses.json' },
+  guardLogs:     { key: 'cs_guard_logs',   file: 'data/transactions/guard-logs.json' },
+  shiftsLog:     { key: 'cs_shifts_log',   file: 'data/transactions/shifts-log.json' },
+  activeShift:   { key: 'cs_active_shift', file: 'data/transactions/active-shift.json', isObject: true, nullable: true }
 };
 
 export const DEFAULT_CATEGORIES = [
@@ -61,29 +61,48 @@ function writeCache(key, value) {
   catch (err) { console.warn('DataService: تعذر الحفظ المحلي', key, err); }
 }
 
-// ── مزامنة لحظية بين أجهزة المحل عبر سيرفر Socket.io (اختياري) ──
+// ── مزامنة لحظية بين أجهزة المحل عبر سيرفر Socket.io ──
 let socket = null;
 function connectRealtimeServer() {
   if (typeof window === 'undefined' || socket) return;
-  // يعمل فقط لو الصفحة متخدمة من سيرفرنا (server.js)
-  const s = document.createElement('script');
-  s.src = '/socket.io/socket.io.js';
-  s.onload = () => {
+
+  function initSocket() {
     try {
       socket = window.io();
-      socket.on('cs:update', ({ file, value }) => {
-        for (const [n, d] of Object.entries(DOMAINS)) {
-          if (d.file === file) {
-            writeCache(d.key, value);
-            clearDirty(n);
-            window.dispatchEvent(new CustomEvent('cs:datachange', { detail: { domain: n, value, remote: true } }));
+      socket.on('connect', () => {
+        console.log('[Realtime] متصل بسيرفر النظام بنجاح');
+      });
+      socket.on('cs:update', ({ file, domain, value }) => {
+        let domName = domain;
+        if (!domName && file) {
+          for (const [n, d] of Object.entries(DOMAINS)) {
+            if (d.file === file) { domName = n; break; }
           }
         }
+        if (domName && DOMAINS[domName]) {
+          writeCache(DOMAINS[domName].key, value);
+          clearDirty(domName);
+          window.dispatchEvent(new CustomEvent('cs:datachange', { detail: { domain: domName, value, remote: true } }));
+          broadcastChange(domName, value, true);
+        }
       });
-    } catch (e) {}
-  };
-  s.onerror = () => {}; // لا سيرفر → نكمل بـ GitHub فقط
-  document.head.appendChild(s);
+      socket.on('cs:reload', () => {
+        window.location.reload();
+      });
+    } catch (e) {
+      console.warn('[Realtime] خطأ في تهيئة Socket.io:', e);
+    }
+  }
+
+  if (window.io) {
+    initSocket();
+  } else {
+    const s = document.createElement('script');
+    s.src = '/socket.io/socket.io.js';
+    s.onload = initSocket;
+    s.onerror = () => { console.warn('[Realtime] تعذر تحميل مكتبة Socket.io'); };
+    document.head.appendChild(s);
+  }
 }
 
 // ── سحب هادئ من GitHub: لا يمسح أبداً بيانات "متسخة" (لم تُرفع) ──
@@ -118,8 +137,13 @@ try {
   syncChannel = new BroadcastChannel('cs_pos_sync_channel');
   syncChannel.onmessage = (event) => {
     if (event.data && event.data.domain) {
+      const domName = event.data.domain;
+      const domCfg = DOMAINS[domName];
+      if (domCfg && event.data.value !== undefined) {
+        writeCache(domCfg.key, event.data.value);
+      }
       window.dispatchEvent(new CustomEvent('cs:datachange', {
-        detail: { domain: event.data.domain, remote: !!event.data.remote, fromOtherTab: true }
+        detail: { domain: domName, value: event.data.value, remote: !!event.data.remote, fromOtherTab: true }
       }));
     }
   };
@@ -130,8 +154,9 @@ if (typeof window !== 'undefined') {
     if (!e.key) return;
     for (const [domName, domCfg] of Object.entries(DOMAINS)) {
       if (domCfg.key === e.key) {
+        const val = readCache(domCfg.key);
         window.dispatchEvent(new CustomEvent('cs:datachange', {
-          detail: { domain: domName, remote: false, fromStorageEvent: true }
+          detail: { domain: domName, value: val, remote: false, fromStorageEvent: true }
         }));
         break;
       }
@@ -139,9 +164,16 @@ if (typeof window !== 'undefined') {
   });
 }
 
-function broadcastChange(name, remote = false) {
+function broadcastChange(name, value, remote = false) {
   if (syncChannel) {
-    try { syncChannel.postMessage({ domain: name, remote: !!remote, timestamp: Date.now() }); } catch (err) {}
+    try {
+      syncChannel.postMessage({
+        domain: name,
+        value,
+        remote: !!remote,
+        timestamp: Date.now()
+      });
+    } catch (err) {}
   }
 }
 
@@ -208,6 +240,26 @@ if (typeof window !== 'undefined') {
 async function loadDomain(name) {
   const domain = DOMAINS[name];
   if (!domain) return [];
+
+  // 1. المحاولة الأولى: قراءة أحدث بيانات من ديسك السيرفر المباشر (تضمن عدم ضياع أي طلبات أو تعديلات)
+  try {
+    const res = await fetch('/api/data/' + name);
+    if (res.ok) {
+      const serverData = await res.json();
+      if (serverData !== undefined && serverData !== null) {
+        if (name === 'categories' && Array.isArray(serverData) && serverData.length === 0) {
+          writeCache(domain.key, DEFAULT_CATEGORIES);
+          return DEFAULT_CATEGORIES;
+        }
+        writeCache(domain.key, serverData);
+        return serverData;
+      }
+    }
+  } catch (apiErr) {
+    // السيرفر غير متوفر مؤقتاً، نكمل بالتخزين المحلي
+  }
+
+  // 2. المحاولة الثانية: الكاش المحلي في المتصفح
   let cached = readCache(domain.key);
   if (cached !== null) {
     if (name === 'categories' && Array.isArray(cached) && cached.length === 0) {
@@ -216,11 +268,16 @@ async function loadDomain(name) {
     }
     return cached;
   }
+
+  // 3. المحاولة الثالثة: الملف الاستاتيكي
   try {
     const res = await fetch('/' + domain.file);
     if (res.ok) {
       const data = await res.json();
-      if (data !== undefined && data !== null) { writeCache(domain.key, data); return data; }
+      if (data !== undefined && data !== null) {
+        writeCache(domain.key, data);
+        return data;
+      }
     }
   } catch (err) { console.warn(`تعذر قراءة ${domain.file}`, err); }
 
@@ -246,13 +303,40 @@ function get(name) {
 function set(name, value) {
   const domain = DOMAINS[name];
   if (!domain) return;
+
+  // 1) تحديث فوري للكاش المحلي في نافذة المتصفح الحالية (0ms)
   writeCache(domain.key, value);
-  markDirty(name);
+
+  // 2) إطلاق حدث التحديث داخل الصفحة
   window.dispatchEvent(new CustomEvent('cs:datachange', { detail: { domain: name, value, remote: false } }));
-  broadcastChange(name, false);
+
+  // 3) بث التحديث اللحظي لجميع التبويبات الأخرى المفتوحة في المتصفح
+  broadcastChange(name, value, false);
+
+  // 4) حفظ دائم وحقيقي على القرص الصلب للسيرفر عبر API لضمان بقائها حتى لو قفلت الصفحة
+  fetch('/api/data/' + name, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ value })
+  }).then(res => {
+    if (res.ok) {
+      clearDirty(name);
+    } else {
+      markDirty(name);
+    }
+  }).catch(() => {
+    markDirty(name);
+  });
+
+  // 5) بث فوري عبر Socket.io لجميع الأجهزة والشاشات المتصلة بالسيرفر
   if (socket && socket.connected) {
-    try { socket.emit('cs:update', { file: domain.file, value }); clearDirty(name); } catch (e) {}
+    try {
+      socket.emit('cs:update', { file: domain.file, domain: name, value });
+      clearDirty(name);
+    } catch (e) {}
   }
+
+  // 6) جدولة الرفع للسحابة (GitHub) إن وُجد
   schedulePushToGitHub(name, value);
 }
 

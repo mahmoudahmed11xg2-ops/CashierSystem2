@@ -341,6 +341,7 @@ table.custom-table tr:hover td { background: var(--surface2); }
     <div class="nav-section-title">المبيعات والصالة</div>
     <button class="nav-item" onclick="navigate('pos.html')">الكاشير (POS)</button>
     <button class="nav-item" onclick="navigate('tables.html')">إدارة الطاولات</button>
+    <button class="nav-item" onclick="navigate('kitchen.html')">شاشة المطبخ (KDS)</button>
     <button class="nav-item" onclick="navigate('orders.html')">سجل الفواتير</button>
     <button class="nav-item" onclick="navigate('delivery.html')">طلبات الديليفري</button>
 
@@ -661,7 +662,7 @@ window.switchTab = function(tabName) {
 };
 
 window.renderStockTable = function() {
-  const stock = JSON.parse(localStorage.getItem('cs_stock') || '[]');
+  const stock = DataService.get('stock') || [];
   const search = (document.getElementById('searchStock').value || '').trim().toLowerCase();
 
   const filtered = stock.filter(s => !search || s.name.toLowerCase().includes(search));
@@ -718,7 +719,7 @@ window.openAddStockModal = function() {
 };
 
 window.openEditStockModal = function(id) {
-  const stock = JSON.parse(localStorage.getItem('cs_stock') || '[]');
+  const stock = DataService.get('stock') || [];
   const s = stock.find(x => x.id == id);
   if (!s) return;
 
@@ -741,7 +742,7 @@ window.handleSaveStock = function(e) {
   const min = parseFloat(document.getElementById('stockMin').value) || 0;
   const cost = parseFloat(document.getElementById('stockCost').value) || 0;
 
-  const stock = JSON.parse(localStorage.getItem('cs_stock') || '[]');
+  const stock = DataService.get('stock') || [];
 
   if (idVal) {
     const idx = stock.findIndex(x => x.id == idVal);
@@ -763,9 +764,9 @@ window.handleSaveStock = function(e) {
 // Recipes Tab
 // -------------------------------------------------------------
 window.renderRecipesTable = function() {
-  const items = JSON.parse(localStorage.getItem('cs_items') || '[]');
-  const recipes = JSON.parse(localStorage.getItem('cs_recipes') || '[]');
-  const stock = JSON.parse(localStorage.getItem('cs_stock') || '[]');
+  const items = DataService.get('items') || [];
+  const recipes = DataService.get('recipes') || [];
+  const stock = DataService.get('stock') || [];
 
   const tbody = document.getElementById('recipesTbody');
   tbody.innerHTML = items.map(it => {
@@ -797,14 +798,14 @@ window.renderRecipesTable = function() {
 };
 
 window.openRecipeModal = function(menuItemId) {
-  const items = JSON.parse(localStorage.getItem('cs_items') || '[]');
+  const items = DataService.get('items') || [];
   const it = items.find(x => x.id == menuItemId);
   if (!it) return;
 
   document.getElementById('recipeMenuId').value = menuItemId;
   document.getElementById('recipeModalTitle').textContent = `ريسيبي صنف: ${it.name}`;
 
-  const recipes = JSON.parse(localStorage.getItem('cs_recipes') || '[]');
+  const recipes = DataService.get('recipes') || [];
   const rec = recipes.find(r => r.menuId == menuItemId);
 
   const container = document.getElementById('recipeIngredientsList');
@@ -820,7 +821,7 @@ window.openRecipeModal = function(menuItemId) {
 };
 
 window.addIngredientRow = function(selectedId = '', qtyVal = '0.2') {
-  const stock = JSON.parse(localStorage.getItem('cs_stock') || '[]');
+  const stock = DataService.get('stock') || [];
   const container = document.getElementById('recipeIngredientsList');
 
   const div = document.createElement('div');
@@ -845,7 +846,7 @@ window.addIngredientRow = function(selectedId = '', qtyVal = '0.2') {
 window.saveRecipe = function() {
   const mId = document.getElementById('recipeMenuId').value;
   const rows = document.querySelectorAll('.ingredient-row');
-  const stock = JSON.parse(localStorage.getItem('cs_stock') || '[]');
+  const stock = DataService.get('stock') || [];
 
   const ingredients = [];
   rows.forEach(r => {
@@ -862,7 +863,7 @@ window.saveRecipe = function() {
     }
   });
 
-  const recipes = JSON.parse(localStorage.getItem('cs_recipes') || '[]');
+  const recipes = DataService.get('recipes') || [];
   const idx = recipes.findIndex(r => r.menuId == mId);
   if (idx >= 0) {
     recipes[idx].ingredients = ingredients;
@@ -880,8 +881,8 @@ window.saveRecipe = function() {
 // Menu Items Management (المنيو والأصناف)
 // -------------------------------------------------------------
 window.renderMenuItemsTable = function() {
-  const items = JSON.parse(localStorage.getItem('cs_items') || '[]');
-  const cats = JSON.parse(localStorage.getItem('cs_cats') || '[]');
+  const items = DataService.get('items') || [];
+  const cats = DataService.get('categories') || [];
   const search = (document.getElementById('searchMenu')?.value || '').trim().toLowerCase();
 
   const filtered = items.filter(it => !search || it.name.toLowerCase().includes(search) || (it.code || '').toLowerCase().includes(search));
@@ -932,7 +933,7 @@ window.promptAddNewCategoryFromInventory = function() {
   const name = prompt('اكتب اسم قسم المنيو الجديد (مثال: شاورما، برجر، عصائر فريش):');
   if (!name || !name.trim()) return;
 
-  let cats = JSON.parse(localStorage.getItem('cs_cats') || '[]');
+  let cats = DataService.get('categories') || [];
   if (!cats || cats.length === 0) cats = [...DEFAULT_INVENTORY_CATS];
 
   const newId = cats.length > 0 ? (Math.max(...cats.map(c => c.id || 0)) + 1) : 1;
@@ -949,7 +950,7 @@ window.promptAddNewCategoryFromInventory = function() {
 };
 
 window.openAddMenuItemModal = function() {
-  let cats = JSON.parse(localStorage.getItem('cs_cats') || '[]');
+  let cats = DataService.get('categories') || [];
   if (!cats || cats.length === 0) {
     cats = [...DEFAULT_INVENTORY_CATS];
     DataService.set('categories', cats);
@@ -969,11 +970,11 @@ window.openAddMenuItemModal = function() {
 };
 
 window.openEditMenuItemModal = function(id) {
-  const items = JSON.parse(localStorage.getItem('cs_items') || '[]');
+  const items = DataService.get('items') || [];
   const it = items.find(x => x.id == id);
   if (!it) return;
 
-  const cats = JSON.parse(localStorage.getItem('cs_cats') || '[]');
+  const cats = DataService.get('categories') || [];
   const catSel = document.getElementById('menuItemCat');
   catSel.innerHTML = cats.map(c => `<option value="${c.id}" ${c.id === it.catId ? 'selected':''}>${c.name}</option>`).join('');
 
@@ -996,7 +997,7 @@ window.handleSaveMenuItem = function(e) {
   const code = (document.getElementById('menuItemCode').value || '').trim().toUpperCase();
   const available = document.getElementById('menuItemAvailable').checked;
 
-  const items = JSON.parse(localStorage.getItem('cs_items') || '[]');
+  const items = DataService.get('items') || [];
 
   if (idVal) {
     const idx = items.findIndex(x => x.id == idVal);
@@ -1015,7 +1016,7 @@ window.handleSaveMenuItem = function(e) {
 };
 
 window.toggleMenuItemAvailability = function(id) {
-  const items = JSON.parse(localStorage.getItem('cs_items') || '[]');
+  const items = DataService.get('items') || [];
   const idx = items.findIndex(x => x.id == id);
   if (idx >= 0) {
     items[idx].available = (items[idx].available === false) ? true : false;

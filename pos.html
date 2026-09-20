@@ -591,7 +591,7 @@ body {
       <div class="action-buttons-group">
         <!-- IF DINE-IN OCCUPIED TABLE: ALLOW ADDING AS A ROUND -->
         <button class="btn-action-secondary" id="btnAddRoundBtn" style="display:none;" onclick="handleAddRoundToTable()">
-          إرسال Round للمطبخ وحفظه لجلسة الطاولة
+          🍽️ حفظ Round جديد للجلسة
         </button>
 
         <!-- STANDARD PAY / SETTLE TABLE BUTTON -->
@@ -623,7 +623,7 @@ body {
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">فاتورة الحساب</span>
-      <button class="modal-close" onclick="closeModal('receiptModal')">✕</button>
+      <button class="modal-close" onclick="finishAndResetOrder(); closeModal('receiptModal');">✕</button>
     </div>
     <div class="receipt" id="receiptContent"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -804,20 +804,20 @@ AuthService.renderSidebarUI();
 
 // Globals & DB
 const DB = {
-  getItems: () => JSON.parse(localStorage.getItem('cs_items') || '[]'),
-  getCats: () => JSON.parse(localStorage.getItem('cs_cats') || '[]'),
-  getOrders: () => JSON.parse(localStorage.getItem('cs_orders') || '[]'),
+  getItems: () => DataService.get('items') || JSON.parse(localStorage.getItem('cs_items') || '[]'),
+  getCats: () => DataService.get('categories') || JSON.parse(localStorage.getItem('cs_cats') || '[]'),
+  getOrders: () => DataService.get('orders') || JSON.parse(localStorage.getItem('cs_orders') || '[]'),
   saveOrders: (o) => DataService.set('orders', o),
-  getStock: () => JSON.parse(localStorage.getItem('cs_stock') || '[]'),
+  getStock: () => DataService.get('stock') || JSON.parse(localStorage.getItem('cs_stock') || '[]'),
   saveStock: (s) => DataService.set('stock', s),
-  getRecipes: () => JSON.parse(localStorage.getItem('cs_recipes') || '[]'),
+  getRecipes: () => DataService.get('recipes') || JSON.parse(localStorage.getItem('cs_recipes') || '[]'),
   logGuardEvent: (action, details, value = 0) => {
-    const logs = JSON.parse(localStorage.getItem('cs_guard_logs') || '[]');
+    const logs = DataService.get('guardLogs') || JSON.parse(localStorage.getItem('cs_guard_logs') || '[]');
     const session = AuthService.getSession();
     logs.push({
       id: Date.now() + Math.random().toString(36).substr(2, 5),
       timestamp: new Date().toISOString(),
-      user: session ? session.username : 'النظام',
+      user: session ? (session.name || session.username) : 'النظام',
       role: session ? session.role : 'سيستم',
       action, details, value: parseFloat(value) || 0
     });
@@ -964,7 +964,7 @@ window.handleTableSelect = function(tableId) {
     if (viewRoundsBtn) viewRoundsBtn.style.display = 'inline-block';
     if (transferBtn) transferBtn.style.display = 'inline-block';
     addRoundBtn.style.display = 'block';
-    addRoundBtn.textContent = '🍽️ إرسال Round إضافي للطاولة والمطبخ';
+    addRoundBtn.textContent = '🍽️ حفظ Round إضافي للجلسة';
   } else if (t.status === TABLE_STATUS.CLEANING) {
     banner.classList.add('show');
     bannerTotal.textContent = 'قيد التنظيف والتعقيم 🧹';
@@ -1145,19 +1145,28 @@ window.clearActiveOrder = function() {
 function updateOrderUI() {
   const container = document.getElementById('orderItems');
   const payBtn = document.getElementById('payBtn');
+  const btnAddRoundBtn = document.getElementById('btnAddRoundBtn');
 
   const t = selectedTable ? TableManager.getTable(selectedTable) : null;
   const isOccupiedTable = t && t.status === TABLE_STATUS.OCCUPIED;
 
   if (order.length === 0) {
     container.innerHTML = `<div class="order-empty">اختر الأصناف من القائمة للبدء</div>`;
+    if (btnAddRoundBtn) btnAddRoundBtn.disabled = true;
+
     // If occupied table with past rounds, enable pay button even if active cart is empty!
     if (isOccupiedTable && t.total > 0) {
       payBtn.disabled = false;
       payBtn.textContent = `طلب الحساب وإغلاق الطاولة (${(t.total).toLocaleString('ar-EG')} ج)`;
+      if (btnAddRoundBtn) btnAddRoundBtn.style.display = 'none';
     } else {
       payBtn.disabled = true;
       payBtn.textContent = 'إتمام الدفع والفاتورة';
+      if (isOccupiedTable) {
+        if (btnAddRoundBtn) btnAddRoundBtn.style.display = 'block';
+      } else {
+        if (btnAddRoundBtn) btnAddRoundBtn.style.display = 'none';
+      }
     }
   } else {
     container.innerHTML = order.map((o, idx) => `
@@ -1176,8 +1185,13 @@ function updateOrderUI() {
     payBtn.disabled = false;
     if (isOccupiedTable) {
       payBtn.textContent = 'إتمام الحساب والدفع الشامل للجلسة';
+      if (btnAddRoundBtn) {
+        btnAddRoundBtn.style.display = 'block';
+        btnAddRoundBtn.disabled = false;
+      }
     } else {
       payBtn.textContent = 'إتمام الدفع والفاتورة';
+      if (btnAddRoundBtn) btnAddRoundBtn.style.display = 'none';
     }
   }
 
@@ -1350,6 +1364,7 @@ function execStandardCheckout() {
   const orders = DB.getOrders();
   const oId = orders.length > 0 ? (Math.max(...orders.map(o => parseInt(o.id) || 0)) + 1) : 1;
   const now = new Date();
+  const session = AuthService.getSession();
 
   const invoice = {
     id: oId,
@@ -1360,6 +1375,7 @@ function execStandardCheckout() {
     subtotal, discount, total,
     payMethod,
     status: 'paid',
+    cashier: session ? (session.name || session.username) : 'الكاشير',
     time: now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
     date: now.toISOString().split('T')[0],
     createdAt: now.toISOString()
@@ -1376,7 +1392,7 @@ function execStandardCheckout() {
     hideTableSessionBanner();
   }
 
-  DB.logGuardEvent('فاتورة مبيعات', `تم إصدار الفاتورة #${oId} بقيمة ${total} ج`, total);
+  DB.logGuardEvent('فاتورة مبيعات', `تم إصدار وسداد الفاتورة #${oId} بقيمة ${total} ج`, total);
   showReceipt(invoice);
 }
 
@@ -1396,6 +1412,7 @@ window.handleDeliverySubmit = function(e) {
   const orders = DB.getOrders();
   const oId = orders.length > 0 ? (Math.max(...orders.map(o => parseInt(o.id) || 0)) + 1) : 1;
   const now = new Date();
+  const session = AuthService.getSession();
 
   const invoice = {
     id: oId,
@@ -1409,6 +1426,7 @@ window.handleDeliverySubmit = function(e) {
     subtotal, discount, total,
     payMethod,
     status: 'paid',
+    cashier: session ? (session.name || session.username) : 'الكاشير',
     time: now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
     date: now.toISOString().split('T')[0],
     createdAt: now.toISOString()
@@ -1418,7 +1436,6 @@ window.handleDeliverySubmit = function(e) {
   DB.saveOrders(orders);
   deductRecipeStock(order);
   closeModal('deliveryDetailsModal');
-
   showReceipt(invoice);
 };
 

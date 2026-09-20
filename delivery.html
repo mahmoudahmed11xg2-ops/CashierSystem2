@@ -317,6 +317,7 @@ body {
     <div class="nav-section-title">المبيعات والصالة</div>
     <button class="nav-item" onclick="navigate('pos.html')">الكاشير (POS)</button>
     <button class="nav-item" onclick="navigate('tables.html')">إدارة الطاولات</button>
+    <button class="nav-item" onclick="navigate('kitchen.html')">شاشة المطبخ (KDS)</button>
     <button class="nav-item" onclick="navigate('orders.html')">سجل الفواتير</button>
     <button class="nav-item active" onclick="navigate('delivery.html')">طلبات الديليفري</button>
 
@@ -475,7 +476,7 @@ function showToast(msg) {
 }
 
 window.renderDeliveries = function() {
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const orders = DataService.get('orders') || [];
   const deliveryOrders = orders.filter(o => o.type === 'delivery');
 
   const pending = deliveryOrders.filter(o => !o.dStatus || o.dStatus === 'pending');
@@ -575,7 +576,7 @@ window.renderDeliveries = function() {
 };
 
 window.printDeliveryReceipt = function(orderId) {
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const orders = DataService.get('orders') || [];
   const o = orders.find(x => String(x.id) === String(orderId));
   if (!o) {
     showToast('لم يتم العثور على الطلب');
@@ -588,12 +589,12 @@ window.printDeliveryReceipt = function(orderId) {
 };
 
 window.openAssignModal = function(orderId) {
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const orders = DataService.get('orders') || [];
   const o = orders.find(x => String(x.id) === String(orderId));
   if (!o) return;
 
   // ملء قائمة الطيارين تلقائياً من المسجلين في الـ CRM
-  const captains = JSON.parse(localStorage.getItem('cs_captains') || '[]');
+  const captains = DataService.get('captains') || [];
   const riderSel = document.getElementById('assignRiderSelect');
   if (riderSel) {
     if (captains.length > 0) {
@@ -621,7 +622,7 @@ window.handleSaveAssign = function(e) {
   const rider = document.getElementById('assignRiderSelect').value;
   const addr = document.getElementById('assignAddress').value.trim();
 
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const orders = DataService.get('orders') || [];
   const idx = orders.findIndex(x => String(x.id) === String(id));
   if (idx >= 0) {
     orders[idx].dStatus = 'road';
@@ -636,7 +637,7 @@ window.handleSaveAssign = function(e) {
 };
 
 window.markDelivered = function(orderId) {
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const orders = DataService.get('orders') || [];
   const idx = orders.findIndex(x => String(x.id) === String(orderId));
   if (idx >= 0) {
     orders[idx].dStatus = 'done';
