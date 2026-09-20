@@ -1042,6 +1042,20 @@ function calcTotals() {
   document.getElementById('sumSubtotal').textContent = grandSubtotal.toLocaleString('ar-EG') + ' ج';
   document.getElementById('sumDiscount').textContent = discount > 0 ? ('- ' + discount.toLocaleString('ar-EG') + ' ج') : '0 ج';
   document.getElementById('sumTotal').textContent = total.toLocaleString('ar-EG') + ' ج';
+
+  // مزامنة حية وفورية مع شاشة العميل الخارجية Customer Display
+  try {
+    if ('BroadcastChannel' in window) {
+      const custBc = new BroadcastChannel('cs_order');
+      custBc.postMessage({
+        type: 'order_update',
+        items: order,
+        subtotal: grandSubtotal,
+        discount: discount,
+        total: total
+      });
+    }
+  } catch (e) {}
 }
 
 window.setPayMethod = function(btn) {
@@ -1423,6 +1437,18 @@ window.handleSaveNewDish = function(e) {
 // Start
 checkAdminPermissions();
 initPOS();
+
+// مزامنة حية بدون إعادة تحميل الصفحة
+window.addEventListener('cs:datachange', (e) => {
+  const d = e.detail?.domain;
+  if (!d || d === 'items' || d === 'categories') {
+    buildCatsBar();
+    buildItemsGrid();
+  }
+  if (!d || d === 'tables') {
+    buildTableSelector();
+  }
+});
 </script>
 
 </body>

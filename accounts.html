@@ -676,6 +676,11 @@ window.handleCloseShift = function(e) {
 
 // Start
 renderAccounts();
+
+// مزامنة حية بدون إعادة تحميل الصفحة
+window.addEventListener('cs:datachange', () => {
+  renderAccounts();
+});
 </script>
 
 </body>

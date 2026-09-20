@@ -1309,6 +1309,11 @@ window.handleDeleteUser = function(userId) {
 
 // Initial load
 renderDashboard();
+
+// مزامنة حية بدون إعادة تحميل الصفحة
+window.addEventListener('cs:datachange', () => {
+  renderDashboard();
+});
 </script>
 
 </body>

@@ -140,12 +140,22 @@ export const ROLE_HOME_PAGES = {
   accounts: 'accounts.html'
 };
 
-// لا ننشئ حسابات تجريبية تلقائياً في النسخة المحلية الفارغة.
-export function seedUsersIfEmpty() {
-  return [];
-}
+// الحسابات الافتراضية للمطعم
+export const DEFAULT_USERS = [
+  { id: 'usr_admin', username: 'admin', fullName: 'مدير النظام (Admin)', role: 'admin', active: true, password: btoa('123456'), createdAt: new Date().toISOString() },
+  { id: '3SNhsc2ilvc42YWXhKpLzBO5Yu32', username: 'mahmoud.mostfa', email: 'mahmoud.mostfa@app.com', fullName: 'Mahmoud Mostafa', role: 'admin', active: true, password: btoa('123456'), createdAt: new Date().toISOString() },
+  { id: 'usr_cashier', username: 'cashier', fullName: 'وليد صبحي (كاشير)', role: 'cashier', active: true, password: btoa('123456'), createdAt: new Date().toISOString() },
+  { id: 'usr_manager', username: 'manager', fullName: 'يوسف الصباغ (مشرف فرع)', role: 'manager', active: true, password: btoa('123456'), createdAt: new Date().toISOString() },
+  { id: 'usr_accounts', username: 'accounts', fullName: 'علاء جلال (محاسب)', role: 'accounts', active: true, password: btoa('123456'), createdAt: new Date().toISOString() }
+];
 
-// لا توجد بيانات أو حسابات افتراضية في هذا الإصدار.
+export function seedUsersIfEmpty() {
+  const users = [...DEFAULT_USERS];
+  try {
+    DataService.set('users', users);
+  } catch (e) {}
+  return users;
+}
 
 // ============================================================
 //  Auth Service
@@ -158,6 +168,9 @@ export const AuthService = {
       users = JSON.parse(localStorage.getItem('cs_users') || '[]');
     } catch (e) {
       users = [];
+    }
+    if (!Array.isArray(users) || users.length === 0) {
+      users = seedUsersIfEmpty();
     }
     let dirty = false;
     users = users.map((u, i) => {
@@ -635,10 +648,17 @@ try {
 export const TableManager = {
   getTables: () => {
     let raw = localStorage.getItem('cs_tables');
-    if (!raw) {
-      return [];
+    let tables = [];
+    if (raw) {
+      try {
+        tables = JSON.parse(raw);
+      } catch (e) {
+        tables = [];
+      }
     }
-    let tables = JSON.parse(raw);
+    if (!Array.isArray(tables) || tables.length === 0) {
+      tables = DataService.get('tables');
+    }
     // Normalize status names from legacy ('free' -> 'available', 'busy' -> 'occupied')
     let changed = false;
     tables.forEach(t => {

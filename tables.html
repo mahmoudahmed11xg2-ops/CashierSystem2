@@ -1156,6 +1156,13 @@ window.handleSaveNewTable = function(e) {
 
 // Initial load
 renderTablesGrid();
+
+// مزامنة حية بدون إعادة تحميل الصفحة
+window.addEventListener('cs:datachange', (e) => {
+  if (!e.detail?.domain || e.detail?.domain === 'tables') {
+    renderTablesGrid();
+  }
+});
 </script>
 
 </body>

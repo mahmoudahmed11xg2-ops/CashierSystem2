@@ -632,6 +632,13 @@ window.deleteOrder = function(orderId) {
 
 // Initial run
 renderOrdersTable();
+
+// مزامنة حية بدون إعادة تحميل الصفحة
+window.addEventListener('cs:datachange', (e) => {
+  if (!e.detail?.domain || e.detail?.domain === 'orders') {
+    renderOrdersTable();
+  }
+});
 </script>
 
 </body>
