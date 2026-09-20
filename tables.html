@@ -705,6 +705,10 @@ body {
 
 <script type="module">
 import AuthService, { TableManager, TABLE_STATUS, TABLE_STATUS_LABELS } from './auth.js';
+import DataService from './js/dataService.js';
+
+// تحميل بيانات الطاولات والأصناف والطلبات من السيرفر
+await DataService.init(['tables', 'items', 'orders', 'customers']);
 
 // Enforce RBAC
 if (!AuthService.enforcePage('tables.html')) {
@@ -714,12 +718,17 @@ if (!AuthService.enforcePage('tables.html')) {
 AuthService.renderSidebarUI();
 
 // Globals
+let currentActiveTableId = null;
+
 window.navigate = (p) => window.location.href = p;
 window.handleLogout = async () => {
   await AuthService.logout();
 };
 window.openModal = (id) => document.getElementById(id).classList.add('open');
-window.closeModal = (id) => document.getElementById(id).classList.remove('open');
+window.closeModal = (id) => {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'tableDetailsModal') currentActiveTableId = null;
+};
 
 // Date
 document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('ar-EG', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
@@ -743,9 +752,36 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2800);
 }
 
+// الاستماع الفوري لشبكة المزامنة (تحديثات الطاولات والطلبات من الكاشير والصفحات الأخرى)
+DataService.on(['tables', 'orders'], () => {
+  renderTablesGrid();
+  if (currentActiveTableId && document.getElementById('tableDetailsModal')?.classList.contains('open')) {
+    openTableDetailsModal(currentActiveTableId);
+  }
+});
+
 function renderTablesGrid() {
   const tables = TableManager.getTables();
   const grid = document.getElementById('tablesGrid');
+
+  // تحديث عدادات أزرار التصفية في الواجهة
+  const cAll = tables.length;
+  const cAvail = tables.filter(x => x.status === TABLE_STATUS.AVAILABLE).length;
+  const cOcc = tables.filter(x => x.status === TABLE_STATUS.OCCUPIED).length;
+  const cRes = tables.filter(x => x.status === TABLE_STATUS.RESERVED).length;
+  const cClean = tables.filter(x => x.status === TABLE_STATUS.CLEANING).length;
+
+  const bAll = document.getElementById('filter-all');
+  const bAvail = document.getElementById('filter-available');
+  const bOcc = document.getElementById('filter-occupied');
+  const bRes = document.getElementById('filter-reserved');
+  const bClean = document.getElementById('filter-cleaning');
+
+  if (bAll) bAll.textContent = `جميع الطاولات (${cAll})`;
+  if (bAvail) bAvail.textContent = `متاحة (${cAvail})`;
+  if (bOcc) bOcc.textContent = `مشغولة (${cOcc})`;
+  if (bRes) bRes.textContent = `محجوزة (${cRes})`;
+  if (bClean) bClean.textContent = `قيد التنظيف (${cClean})`;
 
   const filtered = tables.filter(t => {
     if (currentFilter === 'all') return true;
@@ -851,6 +887,7 @@ function renderTablesGrid() {
 // Table Details & Lifecycle Actions Modal
 // -------------------------------------------------------------
 window.openTableDetailsModal = function(tableId) {
+  currentActiveTableId = tableId;
   const t = TableManager.getTable(tableId);
   if (!t) return;
 
@@ -1156,13 +1193,6 @@ window.handleSaveNewTable = function(e) {
 
 // Initial load
 renderTablesGrid();
-
-// مزامنة حية بدون إعادة تحميل الصفحة
-window.addEventListener('cs:datachange', (e) => {
-  if (!e.detail?.domain || e.detail?.domain === 'tables') {
-    renderTablesGrid();
-  }
-});
 </script>
 
 </body>

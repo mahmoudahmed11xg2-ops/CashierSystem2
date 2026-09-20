@@ -3,21 +3,22 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "clean": "rm -rf dist server.js",
     "electron": "electron electron/main.cjs",
-    "lint": "tsc --noEmit",
-    "dist": "vite build && electron-builder"
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
     "firebase": "^12.19.0",
+    "socket.io": "^4.8.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",
@@ -33,18 +34,6 @@
     "typescript": "~5.8.2",
     "vite": "^6.2.3",
     "@types/express": "^4.17.21",
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8"
-  },
-  "build": {
-    "appId": "com.example.reactelectronapp",
-    "productName": "React Example",
-    "files": [
-      "dist/**/*",
-      "electron/**/*"
-    ],
-    "win": {
-      "target": "nsis"
-    }
+    "electron": "^33.2.1"
   }
 }

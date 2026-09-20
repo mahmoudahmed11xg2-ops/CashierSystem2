@@ -488,6 +488,7 @@ body {
   <div class="topbar-right">
     <button class="btn-top" id="adminAddDishBtn" style="background:#1c69d4;color:#fff;border-color:#1c69d4;display:none;" onclick="openAddDishModal()">+ إضافة وجبة / صنف</button>
     <button class="btn-top" onclick="navigate('tables.html')">خريطة الطاولات</button>
+    <button class="btn-top" onclick="window.open('customer-display.html', '_blank')">🖥️ شاشة العميل</button>
     <button class="btn-top" onclick="navigate('orders.html')">سجل الفواتير</button>
     <button class="btn-top" onclick="navigate('dashboard.html')">لوحة التحكم</button>
     <button class="btn-top danger" onclick="clearActiveOrder()">مسح الطلب</button>
@@ -536,8 +537,9 @@ body {
       <div style="font-size:11px;color:#1e293b;margin-top:2px;" id="bannerDetails">
         العميل: — | الويتر: —
       </div>
-      <div style="display:flex;gap:6px;margin-top:6px;">
-        <button class="btn-top" style="padding:3px 8px;font-size:11px;" onclick="openRoundsModal()">عرض تفاصيل Rounds الجلسة</button>
+      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+        <button class="btn-top" id="bannerViewRoundsBtn" style="padding:3px 8px;font-size:11px;" onclick="openRoundsModal()">عرض تفاصيل Rounds الجلسة</button>
+        <button class="btn-top" id="bannerTransferBtn" style="padding:3px 8px;font-size:11px;background:#2563eb;color:#fff;border:none;" onclick="openTransferModalFromPOS()">⇄ نقل الطاولة</button>
         <span id="bannerCheckinBtnWrap"></span>
       </div>
     </div>
@@ -625,7 +627,7 @@ body {
     </div>
     <div class="receipt" id="receiptContent"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <button class="btn-action-secondary" onclick="printReceipt()">طباعة الفاتورة</button>
+      <button class="btn-action-secondary" onclick="printReceipt()" style="font-weight:800;">🖨️ طباعة الفاتورة (Rongta 80mm)</button>
       <button class="btn-action-primary" onclick="finishAndResetOrder()">طلب جديد</button>
     </div>
   </div>
@@ -719,16 +721,79 @@ body {
   </div>
 </div>
 
+<!-- MODAL: TRANSFER TABLE IN POS -->
+<div class="overlay" id="transferTablePosModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <span class="modal-title">⇄ نقل جلسة الطاولة</span>
+      <button class="modal-close" onclick="closeModal('transferTablePosModal')">✕</button>
+    </div>
+    <form onsubmit="handleConfirmTransferTablePOS(event)">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;" id="transferSourceDetailsPOS">—</div>
+      <div class="form-group">
+        <label>اختر الطاولة البديلة (المتاحة):</label>
+        <select id="transferTargetSelectPOS" required style="width:100%;padding:10px;border:1px solid var(--border-strong);border-radius:var(--radius);font-family:inherit;font-size:13px;"></select>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button type="button" class="btn-action-secondary" onclick="closeModal('transferTablePosModal')">إلغاء</button>
+        <button type="submit" class="btn-action-primary" style="padding:8px 18px;">تأكيد نقل الجلسة</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script type="module">
 import AuthService, { TableManager, TABLE_STATUS, TABLE_STATUS_LABELS } from './auth.js';
 import DataService from './js/dataService.js';
+import ThermalPrinter from './js/thermalPrinter.js';
 
-// تحميل بيانات الأقسام والأصناف من data/ وزرعها في الكاش المحلي
-// لو أول مرة (بدل الأرقام الثابتة اللي كانت هنا قبل كده)
-await DataService.init(['categories', 'items', 'orders', 'stock', 'recipes', 'guardLogs']);
+// تحميل بيانات الأقسام والأصناف والطيارين والطاولات من data/ وزرعها في الكاش المحلي
+await DataService.init(['categories', 'items', 'orders', 'stock', 'recipes', 'guardLogs', 'captains', 'tables']);
+
+// الاستماع الفوري الحي لتحديثات الطاولات والأصناف والمخزون من الصفحات الأخرى عبر شبكة المزامنة
+DataService.on(['tables'], () => {
+  buildTableSelector();
+  if (selectedTable) {
+    handleTableSelect(selectedTable);
+  }
+});
+DataService.on(['categories', 'items'], () => {
+  buildCatsBar();
+  buildItemsGrid();
+});
+DataService.on(['stock', 'recipes'], () => {
+  buildItemsGrid();
+});
+
+// تهيئة قناة بث شاشة العميل التفاعلية
+let customerDisplayChannel = null;
+try {
+  customerDisplayChannel = new BroadcastChannel('cs_order');
+} catch(e) {}
+
+function broadcastToCustomerDisplay(grandSubtotal, discount, total) {
+  const payload = {
+    type: 'order_update',
+    items: order,
+    subtotal: grandSubtotal,
+    discount: discount,
+    total: total,
+    timestamp: Date.now()
+  };
+
+  try {
+    localStorage.setItem('cs_customer_display_payload', JSON.stringify(payload));
+  } catch(e) {}
+
+  if (customerDisplayChannel) {
+    try {
+      customerDisplayChannel.postMessage(payload);
+    } catch(e) {}
+  }
+}
 
 // Enforce RBAC
 if (!AuthService.enforcePage('pos.html')) {
@@ -805,8 +870,14 @@ function initPOS() {
 
     if (actionParam === 'checkout') {
       setTimeout(() => {
-        handleCheckoutAction();
-      }, 300);
+        const payBtn = document.getElementById('payBtn');
+        if (payBtn) {
+          payBtn.focus();
+          payBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        const t = TableManager.getTable(tableIdParam);
+        showToast(`طلب حساب طاولة ${t?.number || tableIdParam}: يرجى مراجعة طريقة الدفع وتأكيد الحساب`);
+      }, 200);
     }
   } else {
     updateOrderUI();
@@ -839,26 +910,37 @@ function buildTableSelector() {
   const tables = TableManager.getTables();
   sel.innerHTML = '<option value="">اختر طاولة</option>' + tables.map(t => {
     const stLabel = TABLE_STATUS_LABELS[t.status] || t.status;
-    return `<option value="${t.id}" ${selectedTable == t.id ? 'selected':''}>طاولة ${t.number} (${stLabel})</option>`;
+    const isSel = selectedTable && String(selectedTable) === String(t.id);
+    return `<option value="${t.id}" ${isSel ? 'selected':''}>طاولة ${t.number} (${stLabel})</option>`;
   }).join('');
 }
 
 window.handleTableSelect = function(tableId) {
-  selectedTable = tableId ? parseInt(tableId) : null;
-  if (!selectedTable) {
+  if (!tableId) {
+    selectedTable = null;
     hideTableSessionBanner();
     updateOrderUI();
     return;
   }
 
-  const t = TableManager.getTable(selectedTable);
-  if (!t) return;
+  const t = TableManager.getTable(tableId);
+  if (!t) {
+    selectedTable = null;
+    hideTableSessionBanner();
+    updateOrderUI();
+    return;
+  }
+
+  selectedTable = t.id;
 
   const banner = document.getElementById('tableSessionBanner');
   const bannerName = document.getElementById('bannerTableName');
   const bannerTotal = document.getElementById('bannerSessionTotal');
   const bannerDetails = document.getElementById('bannerDetails');
   const checkinWrap = document.getElementById('bannerCheckinBtnWrap');
+  const viewRoundsBtn = document.getElementById('bannerViewRoundsBtn');
+  const transferBtn = document.getElementById('bannerTransferBtn');
+  const addRoundBtn = document.getElementById('btnAddRoundBtn');
 
   bannerName.textContent = `طاولة ${t.number} (${TABLE_STATUS_LABELS[t.status] || t.status})`;
 
@@ -866,21 +948,41 @@ window.handleTableSelect = function(tableId) {
     const res = t.reservation || {};
     banner.classList.add('show');
     bannerTotal.textContent = 'حجز مسجل';
-    bannerDetails.textContent = `حجز للعميل: ${res.customerName || 'عميل محجوز'} | الوقت: ${res.time || '—'} (${res.guestsCount || 4} أفراد)`;
-    checkinWrap.innerHTML = `<button class="btn-top" style="background:var(--primary);color:#fff;border:none;padding:3px 8px;font-size:11px;" onclick="checkInReservedTableFromPOS('${t.id}')">حضور العميل وفتح الجلسة</button>`;
-    document.getElementById('btnAddRoundBtn').style.display = 'none';
+    bannerDetails.textContent = `حجز للعميل: ${res.customerName || 'عميل محجوز'} | الوقت: ${res.time || '—'} (${res.guestsCount || 4} أفراد) | هاتف: ${res.customerPhone || '—'}`;
+    checkinWrap.innerHTML = `<button class="btn-top" style="background:#16a34a;color:#fff;border:none;padding:4px 10px;font-size:11px;" onclick="checkInReservedTableFromPOS('${t.id}')">حضور العميل وفتح الجلسة ✓</button>`;
+    if (viewRoundsBtn) viewRoundsBtn.style.display = 'none';
+    if (transferBtn) transferBtn.style.display = 'none';
+    addRoundBtn.style.display = 'block';
+    addRoundBtn.textContent = '🍽️ حضور العميل وفتح الجلسة بالطلب الأول';
   } else if (t.status === TABLE_STATUS.OCCUPIED) {
     const sess = t.currentSession || {};
     const rounds = sess.rounds || [];
     banner.classList.add('show');
     bannerTotal.textContent = `إجمالي الجلسة: ${(t.total || 0).toLocaleString('ar-EG')} ج`;
-    bannerDetails.textContent = `العميل: ${sess.customerName || 'عميل صالة'} | الويتر: ${sess.waiter || t.waiter || '—'} | تم تسجيل ${rounds.length} Round`;
+    bannerDetails.textContent = `العميل: ${sess.customerName || 'عميل صالة'} | الويتر: ${sess.waiter || t.waiter || '—'} | تم تسجيل ${rounds.length} Round طلبات`;
     checkinWrap.innerHTML = '';
-    document.getElementById('btnAddRoundBtn').style.display = 'block';
+    if (viewRoundsBtn) viewRoundsBtn.style.display = 'inline-block';
+    if (transferBtn) transferBtn.style.display = 'inline-block';
+    addRoundBtn.style.display = 'block';
+    addRoundBtn.textContent = '🍽️ إرسال Round إضافي للطاولة والمطبخ';
+  } else if (t.status === TABLE_STATUS.CLEANING) {
+    banner.classList.add('show');
+    bannerTotal.textContent = 'قيد التنظيف والتعقيم 🧹';
+    bannerDetails.textContent = `الطاولة تخضع للتعقيم والتجهيز بعد مغادرة العميل السابق`;
+    checkinWrap.innerHTML = `<button class="btn-top" style="background:#16a34a;color:#fff;border:none;padding:4px 10px;font-size:11px;" onclick="markTableCleanedFromPOS('${t.id}')">تم التنظيف والتعقيم ✓ إتاحة الطاولة</button>`;
+    if (viewRoundsBtn) viewRoundsBtn.style.display = 'none';
+    if (transferBtn) transferBtn.style.display = 'none';
+    addRoundBtn.style.display = 'none';
   } else {
-    // Available or cleaning
-    banner.classList.remove('show');
-    document.getElementById('btnAddRoundBtn').style.display = 'none';
+    // Available
+    banner.classList.add('show');
+    bannerTotal.textContent = 'متاحة للاستقبال';
+    bannerDetails.textContent = `طاولة شاغرة (${t.zone} - ${t.seats} مقاعد). أضف الأصناف واضغط "إرسال Round 1 للمطبخ" لفتح الجلسة، أو أتمم الدفع مباشرة.`;
+    checkinWrap.innerHTML = `<button class="btn-top" style="background:#2563eb;color:#fff;border:none;padding:4px 10px;font-size:11px;" onclick="openTableSessionDirectFromPOS('${t.id}')">بدء جلسة مباشرة</button>`;
+    if (viewRoundsBtn) viewRoundsBtn.style.display = 'none';
+    if (transferBtn) transferBtn.style.display = 'none';
+    addRoundBtn.style.display = 'block';
+    addRoundBtn.textContent = '🍽️ بدء الجلسة وإرسال Round 1 للمطبخ';
   }
 
   updateOrderUI();
@@ -896,6 +998,60 @@ window.checkInReservedTableFromPOS = function(tableId) {
   buildTableSelector();
   handleTableSelect(tableId);
   showToast('تم استقبال العميل وفتح جلسة الطاولة بنجاح');
+};
+
+window.openTableSessionDirectFromPOS = function(tableId) {
+  TableManager.openSession(tableId, 'عميل صالة', 'وليد صبحي صالة');
+  buildTableSelector();
+  handleTableSelect(tableId);
+  showToast('تم بدء الجلسة، يمكنك الآن اختيار الأصناف وإرسالها');
+};
+
+window.markTableCleanedFromPOS = function(tableId) {
+  TableManager.setAvailable(tableId);
+  buildTableSelector();
+  handleTableSelect(tableId);
+  showToast('تم تعقيم الطاولة وإتاحتها بنجاح لاستقبال العملاء');
+};
+
+window.openTransferModalFromPOS = function() {
+  if (!selectedTable) return;
+  const t = TableManager.getTable(selectedTable);
+  if (!t || t.status !== TABLE_STATUS.OCCUPIED) {
+    showToast('الطاولة لا تحتوي على جلسة نشطة لنقلها');
+    return;
+  }
+
+  const allTables = TableManager.getTables();
+  const availableTargets = allTables.filter(x => String(x.id) !== String(t.id) && x.status === TABLE_STATUS.AVAILABLE);
+
+  const sel = document.getElementById('transferTargetSelectPOS');
+  if (availableTargets.length === 0) {
+    sel.innerHTML = '<option value="" disabled selected>لا توجد طاولات شاغرة ومتاحة حالياً لنقل الجلسة إليها</option>';
+  } else {
+    sel.innerHTML = availableTargets.map(tgt => 
+      `<option value="${tgt.id}">طاولة ${tgt.number} — ${tgt.zone} (${tgt.seats})</option>`
+    ).join('');
+  }
+
+  document.getElementById('transferSourceDetailsPOS').textContent = `الطاولة الحالية: طاولة ${t.number} (${t.zone}) — إجمالي الطلبات: ${(t.total||0).toLocaleString('ar-EG')} ج`;
+  openModal('transferTablePosModal');
+};
+
+window.handleConfirmTransferTablePOS = function(e) {
+  e.preventDefault();
+  const targetId = document.getElementById('transferTargetSelectPOS').value;
+  if (!targetId) return showToast('يرجى اختيار طاولة بديلة شاغرة');
+
+  try {
+    const res = TableManager.transferTable(selectedTable, targetId);
+    closeModal('transferTablePosModal');
+    buildTableSelector();
+    handleTableSelect(res.to.id);
+    showToast(`تم نقل الجلسة بنجاح إلى طاولة ${res.to.number} وإخلاء طاولة ${res.from.number} للتعقيم`);
+  } catch (err) {
+    showToast('فشل نقل الطاولة: ' + err.message);
+  }
 };
 
 // -------------------------------------------------------------
@@ -1043,19 +1199,7 @@ function calcTotals() {
   document.getElementById('sumDiscount').textContent = discount > 0 ? ('- ' + discount.toLocaleString('ar-EG') + ' ج') : '0 ج';
   document.getElementById('sumTotal').textContent = total.toLocaleString('ar-EG') + ' ج';
 
-  // مزامنة حية وفورية مع شاشة العميل الخارجية Customer Display
-  try {
-    if ('BroadcastChannel' in window) {
-      const custBc = new BroadcastChannel('cs_order');
-      custBc.postMessage({
-        type: 'order_update',
-        items: order,
-        subtotal: grandSubtotal,
-        discount: discount,
-        total: total
-      });
-    }
-  } catch (e) {}
+  broadcastToCustomerDisplay(grandSubtotal, discount, total);
 }
 
 window.setPayMethod = function(btn) {
@@ -1083,18 +1227,29 @@ window.setPayMethod = function(btn) {
 // -------------------------------------------------------------
 window.handleAddRoundToTable = function() {
   if (!selectedTable) return showToast('يرجى اختيار طاولة أولاً');
-  if (order.length === 0) return showToast('أضف أصنافاً أولاً للـ Round');
+  if (order.length === 0) return showToast('يرجى اختيار أصناف أولاً لإرسالها في هذا الـ Round');
 
   try {
+    const t = TableManager.getTable(selectedTable);
+    if (!t) return showToast('الطاولة غير موجودة');
+
+    // إذا كانت الطاولة محجوزة أو متاحة، نفتح الجلسة تلقائياً
+    if (t.status === TABLE_STATUS.RESERVED) {
+      TableManager.checkInReservation(selectedTable, 'وليد صبحي صالة');
+    } else if (t.status !== TABLE_STATUS.OCCUPIED) {
+      TableManager.openSession(selectedTable, 'عميل صالة', 'وليد صبحي صالة');
+    }
+
     TableManager.addRound(selectedTable, order, 'وليد صبحي صالة');
-    // Deduct raw ingredients
+    // خصم مكونات الوجبات من المخزون
     deductRecipeStock(order);
 
     order = [];
+    buildTableSelector();
     handleTableSelect(selectedTable);
-    showToast('تم إرسال الـ Round للمطبخ وحفظه في جلسة الطاولة');
+    showToast(`تم إرسال الطلب لطاولة ${t.number} وللمطبخ وحفظه في الجلسة بنجاح 🍽️`);
   } catch (err) {
-    alert(err.message);
+    showToast('خطأ: ' + err.message);
   }
 };
 
@@ -1134,6 +1289,23 @@ window.openRoundsModal = function() {
 window.handleCheckoutAction = function() {
   if (orderType === 'delivery') {
     if (order.length === 0) return showToast('السلة فارغة');
+    
+    // تعبئة قائمة الطيارين من المسجلين
+    const captains = JSON.parse(localStorage.getItem('cs_captains') || '[]');
+    const rSel = document.getElementById('delRiderSelect');
+    if (rSel) {
+      if (captains.length > 0) {
+        rSel.innerHTML = captains.map(c => `<option value="${c.name}">${c.name} (${c.vehicle || 'طيار'})</option>`).join('') +
+          `<option value="دليفري مستقل">دليفري مستقل</option>`;
+      } else {
+        rSel.innerHTML = `
+          <option value="كابتن كريم صبحي">كابتن كريم صبحي</option>
+          <option value="كابتن أحمد سامي">كابتن أحمد سامي</option>
+          <option value="دليفري مستقل">دليفري مستقل</option>
+        `;
+      }
+    }
+
     openModal('deliveryDetailsModal');
     return;
   }
@@ -1154,8 +1326,11 @@ window.handleCheckoutAction = function() {
       
       DB.logGuardEvent('إغلاق ودفع طاولة', `تم إغلاق ودفع حساب طاولة ${t.number} بإجمالي ${invoice.total} ج`, invoice.total);
       showReceipt(invoice);
+      selectedTable = null;
       buildTableSelector();
       hideTableSessionBanner();
+      updateOrderUI();
+      showToast(`تم إتمام حساب طاولة ${t.number} بنجاح وتحويلها للتنظيف 🧹`);
       return;
     }
   }
@@ -1193,6 +1368,13 @@ function execStandardCheckout() {
   orders.push(invoice);
   DB.saveOrders(orders);
   deductRecipeStock(order);
+
+  if (orderType === 'dine' && selectedTable) {
+    TableManager.setCleaning(selectedTable);
+    buildTableSelector();
+    selectedTable = null;
+    hideTableSessionBanner();
+  }
 
   DB.logGuardEvent('فاتورة مبيعات', `تم إصدار الفاتورة #${oId} بقيمة ${total} ج`, total);
   showReceipt(invoice);
@@ -1265,7 +1447,10 @@ function deductRecipeStock(itemsList) {
 // -------------------------------------------------------------
 // Receipts
 // -------------------------------------------------------------
+let activeReceiptInvoice = null;
+
 function showReceipt(inv) {
+  activeReceiptInvoice = inv;
   const payLabels = { cash:'كاش', card:'فيزا', transfer:'تحويل', officer:'أوفيسير' };
   const typeLabels = { dine:'صالة', take:'تيك أواي', delivery:'ديليفري' };
 
@@ -1284,13 +1469,17 @@ function showReceipt(inv) {
     `;
   }
 
+  const cfg = ThermalPrinter.getPrinterConfig();
+
   document.getElementById('receiptContent').innerHTML = `
-    <div style="text-align:center;font-weight:800;font-size:15px;">CashierSystem</div>
+    <div style="text-align:center;font-weight:800;font-size:16px;">${cfg.storeName || 'CashierSystem'}</div>
     <div style="text-align:center;font-size:11px;color:var(--text-muted);margin-bottom:8px;">${new Date().toLocaleString('ar-EG')}</div>
-    <div class="r-row"><span>رقم الفاتورة:</span><span>#${inv.id}</span></div>
+    <div class="r-row"><span>رقم الفاتورة:</span><strong>#${inv.id}</strong></div>
     <div class="r-row"><span>النوع:</span><span>${typeLabels[inv.type] || inv.type}</span></div>
     ${inv.tableLabel ? `<div class="r-row"><span>الطاولة:</span><span>${inv.tableLabel}</span></div>` : ''}
     ${inv.customer ? `<div class="r-row"><span>العميل:</span><span>${inv.customer}</span></div>` : ''}
+    ${inv.customerPhone ? `<div class="r-row"><span>الهاتف:</span><span>${inv.customerPhone}</span></div>` : ''}
+    ${inv.dAddr ? `<div class="r-row" style="font-size:11px;"><span>العنوان:</span><span>${inv.dAddr}</span></div>` : ''}
     ${inv.waiter ? `<div class="r-row"><span>الويتر:</span><span>${inv.waiter}</span></div>` : ''}
     <hr style="border:none;border-top:1px dashed var(--border-strong);margin:6px 0;" />
     ${inv.items.map(i => `
@@ -1305,31 +1494,37 @@ function showReceipt(inv) {
     ${inv.discount > 0 ? `<div class="r-row"><span>خصم:</span><span>- ${(inv.discount).toLocaleString('ar-EG')} ج</span></div>` : ''}
     <div class="r-row r-total"><span>الإجمالي النهائي:</span><span>${(inv.total||0).toLocaleString('ar-EG')} ج</span></div>
     <div class="r-row" style="margin-top:6px;font-size:12px;"><span>طريقة السداد:</span><span>${payLabels[inv.payMethod] || inv.payMethod}</span></div>
+    <div style="margin-top:10px;text-align:center;font-size:10.5px;color:var(--text-muted);background:#f1f5f9;padding:4px;border-radius:4px;">
+      🖨️ مجهزة لطابعة Rongta RP336 (عرض 80 مم)
+    </div>
   `;
+
   openModal('receiptModal');
+
+  // إذا كانت الطباعة التلقائية مفعلة، أرسل الفاتورة للطابعة فوراً
+  if (cfg.autoPrint === 'enabled') {
+    showToast('جاري إرسال الفاتورة تلقائيًا لطابعة Rongta RP336...');
+    ThermalPrinter.printReceipt(inv).catch(err => {
+      console.warn('Auto print notice:', err);
+    });
+  }
 }
 
 window.printReceipt = function() {
-  const content = document.getElementById('receiptContent').innerHTML;
-  const w = window.open('', '_blank', 'width=380,height=600');
-  w.document.write(`
-    <html dir="rtl">
-    <head>
-      <title>طباعة الفاتورة</title>
-      <style>body{font-family:sans-serif;padding:20px;font-size:13px;}.r-row{display:flex;justify-content:space-between;padding:3px 0;}.r-total{font-weight:bold;font-size:15px;}</style>
-    </head>
-    <body>
-      ${content}
-      <br/><button onclick="window.print()">طباعة</button>
-    </body>
-    </html>
-  `);
-  w.document.close();
+  if (!activeReceiptInvoice) {
+    showToast('لا توجد فاتورة نشطة للطباعة');
+    return;
+  }
+  showToast('جاري تجهيز وطباعة الفاتورة على طابعة Rongta RP336 (80 مم)...');
+  ThermalPrinter.printReceipt(activeReceiptInvoice).catch(err => {
+    showToast('تعذر فتح أمر الطباعة: ' + err.message);
+  });
 };
 
 window.finishAndResetOrder = function() {
   order = [];
   selectedTable = null;
+  activeReceiptInvoice = null;
   document.getElementById('discountVal').value = '';
   document.getElementById('tableSelector').value = '';
   hideTableSessionBanner();
@@ -1437,18 +1632,6 @@ window.handleSaveNewDish = function(e) {
 // Start
 checkAdminPermissions();
 initPOS();
-
-// مزامنة حية بدون إعادة تحميل الصفحة
-window.addEventListener('cs:datachange', (e) => {
-  const d = e.detail?.domain;
-  if (!d || d === 'items' || d === 'categories') {
-    buildCatsBar();
-    buildItemsGrid();
-  }
-  if (!d || d === 'tables') {
-    buildTableSelector();
-  }
-});
 </script>
 
 </body>

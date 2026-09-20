@@ -449,6 +449,11 @@ import DataService from './js/dataService.js';
 // تحميل بيانات الورديات والطلبات والمصروفات من السيرفر
 await DataService.init(['activeShift', 'orders', 'expenses', 'shiftsLog']);
 
+// استماع حي لتحديثات الوردية والمبيعات والمصروفات
+DataService.on(['activeShift', 'orders', 'expenses', 'shiftsLog'], () => {
+  renderAccounts();
+});
+
 // Enforce RBAC
 if (!AuthService.enforcePage('accounts.html')) {
   // redirect
@@ -676,11 +681,6 @@ window.handleCloseShift = function(e) {
 
 // Start
 renderAccounts();
-
-// مزامنة حية بدون إعادة تحميل الصفحة
-window.addEventListener('cs:datachange', () => {
-  renderAccounts();
-});
 </script>
 
 </body>

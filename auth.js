@@ -140,22 +140,131 @@ export const ROLE_HOME_PAGES = {
   accounts: 'accounts.html'
 };
 
-// الحسابات الافتراضية للمطعم
-export const DEFAULT_USERS = [
-  { id: 'usr_admin', username: 'admin', fullName: 'مدير النظام (Admin)', role: 'admin', active: true, password: btoa('123456'), createdAt: new Date().toISOString() },
-  { id: '3SNhsc2ilvc42YWXhKpLzBO5Yu32', username: 'mahmoud.mostfa', email: 'mahmoud.mostfa@app.com', fullName: 'Mahmoud Mostafa', role: 'admin', active: true, password: btoa('123456'), createdAt: new Date().toISOString() },
-  { id: 'usr_cashier', username: 'cashier', fullName: 'وليد صبحي (كاشير)', role: 'cashier', active: true, password: btoa('123456'), createdAt: new Date().toISOString() },
-  { id: 'usr_manager', username: 'manager', fullName: 'يوسف الصباغ (مشرف فرع)', role: 'manager', active: true, password: btoa('123456'), createdAt: new Date().toISOString() },
-  { id: 'usr_accounts', username: 'accounts', fullName: 'علاء جلال (محاسب)', role: 'accounts', active: true, password: btoa('123456'), createdAt: new Date().toISOString() }
+// ============================================================
+//  Default Seed Users
+// ============================================================
+const DEFAULT_USERS = [
+  {
+    id: '3SNhsc2ilvc42YWXhKpLzBO5Yu32',
+    username: 'mahmoud.mostfa',
+    email: 'mahmoud.mostfa@app.com',
+    fullName: 'Mahmoud Mostafa',
+    role: 'admin',
+    active: true,
+    createdAt: new Date().toISOString(),
+    permissions: ['all']
+  },
+  {
+    id: 'user_admin',
+    username: 'admin',
+    email: 'admin@system.local',
+    fullName: 'مدير النظام (Admin)',
+    password: btoa('admin123'),
+    role: 'admin',
+    active: true,
+    createdAt: new Date().toISOString(),
+    permissions: ['all']
+  },
+  {
+    id: 'user_om',
+    username: 'om',
+    email: 'om@system.local',
+    fullName: 'مدير العمليات (OM)',
+    password: btoa('om123'),
+    role: 'om',
+    active: true,
+    createdAt: new Date().toISOString(),
+    permissions: ['operations', 'pos', 'tables', 'inventory', 'accounts']
+  },
+  {
+    id: 'user_manager',
+    username: 'manager',
+    email: 'manager@system.local',
+    fullName: 'مدير الصالة (Manager)',
+    password: btoa('manager123'),
+    role: 'manager',
+    active: true,
+    createdAt: new Date().toISOString(),
+    permissions: ['pos', 'tables', 'delivery', 'inventory', 'crm']
+  },
+  {
+    id: 'user_cashier',
+    username: 'cashier',
+    email: 'cashier@system.local',
+    fullName: 'كاشير المناوبة (Cashier)',
+    password: btoa('cashier123'),
+    role: 'cashier',
+    active: true,
+    createdAt: new Date().toISOString(),
+    permissions: ['pos', 'tables', 'delivery']
+  },
+  {
+    id: 'user_accounts',
+    username: 'accounts',
+    email: 'accounts@system.local',
+    fullName: 'محاسب الوردية (Accounts)',
+    password: btoa('accounts123'),
+    role: 'accounts',
+    active: true,
+    createdAt: new Date().toISOString(),
+    permissions: ['orders', 'accounts', 'expenses']
+  }
 ];
 
+// Seed users if empty & ensure Mahmoud Mostafa admin presence
 export function seedUsersIfEmpty() {
-  const users = [...DEFAULT_USERS];
+  let existing = [];
   try {
-    DataService.set('users', users);
-  } catch (e) {}
-  return users;
+    existing = JSON.parse(localStorage.getItem('cs_users') || '[]');
+  } catch (e) {
+    existing = [];
+  }
+
+  let modified = false;
+
+  // Always ensure Mahmoud Mostafa is registered as primary Admin
+  const mahmoudIdx = existing.findIndex(u => 
+    u.id === '3SNhsc2ilvc42YWXhKpLzBO5Yu32' || 
+    (u.email && u.email.toLowerCase() === 'mahmoud.mostfa@app.com') ||
+    u.username === 'mahmoud.mostfa'
+  );
+
+  if (mahmoudIdx === -1) {
+    existing.unshift({
+      id: '3SNhsc2ilvc42YWXhKpLzBO5Yu32',
+      username: 'mahmoud.mostfa',
+      email: 'mahmoud.mostfa@app.com',
+      fullName: 'Mahmoud Mostafa',
+      role: 'admin',
+      active: true,
+      createdAt: new Date().toISOString(),
+      permissions: ['all']
+    });
+    modified = true;
+  } else {
+    if (existing[mahmoudIdx].role !== 'admin' || existing[mahmoudIdx].active !== true) {
+      existing[mahmoudIdx].role = 'admin';
+      existing[mahmoudIdx].active = true;
+      existing[mahmoudIdx].fullName = 'Mahmoud Mostafa';
+      modified = true;
+    }
+  }
+
+  DEFAULT_USERS.forEach(defU => {
+    if (!existing.some(u => u.username === defU.username || (defU.email && u.email === defU.email))) {
+      existing.push(defU);
+      modified = true;
+    }
+  });
+
+  if (modified) {
+    localStorage.setItem('cs_users', JSON.stringify(existing));
+  }
+  return existing;
 }
+
+// Auto seed on load
+seedUsersIfEmpty();
 
 // ============================================================
 //  Auth Service
@@ -169,9 +278,6 @@ export const AuthService = {
     } catch (e) {
       users = [];
     }
-    if (!Array.isArray(users) || users.length === 0) {
-      users = seedUsersIfEmpty();
-    }
     let dirty = false;
     users = users.map((u, i) => {
       if (!u.id) {
@@ -182,7 +288,7 @@ export const AuthService = {
     });
     if (dirty) {
       try {
-        DataService.set('users', users);
+        localStorage.setItem('cs_users', JSON.stringify(users));
       } catch (e) {}
     }
     return users;
@@ -202,7 +308,7 @@ export const AuthService = {
 
   // Save users
   saveUsers: (users) => {
-    DataService.set('users', users);
+    localStorage.setItem('cs_users', JSON.stringify(users));
   },
 
   // Current session
@@ -640,25 +746,63 @@ export const TABLE_STATUS_LABELS = {
   cleaning: 'قيد التنظيف'
 };
 
-// خريطة الطاولات تبدأ فارغة ولا توجد بيانات افتراضية.
+// تحميل خريطة الطاولات من السيرفر (Realtime). أي تعديل من أي جهاز
+// (فتح طاولة، تحويل، تصفير) بيوصل هنا فورًا عن طريق Socket.IO،
+// وبما إن كل الصفحات بتستخدم TableManager من هنا، أي صفحة بتفتح
+// خريطة الطاولات بتاخد آخر حالة محدّثة أوتوماتيكيًا.
 try {
   await DataService.init(['tables']);
-} catch (e) {}
+} catch (e) {
+  // هنشتغل بالكاش المحلي (أو النسخة الاحتياطية تحت) لو السيرفر مش متاح
+}
+
+const DEFAULT_TABLES = [
+  { id: 1, number: '1', zone: 'صالة العوائل', seats: '4 مقاعد', status: 'available', currentSession: null, reservation: null, total: 0, waiter: '—' },
+  { id: 2, number: '2', zone: 'صالة العوائل', seats: '6 مقاعد', status: 'available', currentSession: null, reservation: null, total: 0, waiter: '—' },
+  { id: 3, number: '3', zone: 'صالة العوائل', seats: '4 مقاعد', status: 'available', currentSession: null, reservation: null, total: 0, waiter: '—' },
+  { id: 4, number: 'VIP 1', zone: 'الكابينة الفاخرة', seats: '8 مقاعد', status: 'available', currentSession: null, reservation: null, total: 0, waiter: '—' },
+  { id: 5, number: 'VIP 2', zone: 'الكابينة الفاخرة', seats: '6 مقاعد', status: 'available', currentSession: null, reservation: null, total: 0, waiter: '—' },
+  { id: 6, number: 'T 1', zone: 'التراس الخارجي', seats: '2 مقعد', status: 'available', currentSession: null, reservation: null, total: 0, waiter: '—' },
+  { id: 7, number: 'T 2', zone: 'التراس الخارجي', seats: '4 مقاعد', status: 'available', currentSession: null, reservation: null, total: 0, waiter: '—' },
+  { id: 8, number: 'T 3', zone: 'التراس الخارجي', seats: '4 مقاعد', status: 'available', currentSession: null, reservation: null, total: 0, waiter: '—' },
+  { 
+    id: 12, 
+    number: '12', 
+    zone: 'صالة العوائل', 
+    seats: '4 مقاعد', 
+    status: 'reserved', 
+    currentSession: null, 
+    reservation: {
+      customerName: 'أحمد محمود',
+      customerPhone: '01012345678',
+      date: new Date().toISOString().split('T')[0],
+      time: '20:00',
+      guestsCount: 4,
+      notes: 'حجز اليوم عائلي 4 أفراد - رغبة بمائدة هادئة',
+      createdAt: new Date().toISOString()
+    },
+    total: 0, 
+    waiter: '—' 
+  }
+];
 
 export const TableManager = {
   getTables: () => {
     let raw = localStorage.getItem('cs_tables');
-    let tables = [];
-    if (raw) {
-      try {
-        tables = JSON.parse(raw);
-      } catch (e) {
-        tables = [];
-      }
+    if (!raw) {
+      // السيرفر مش رجّع بيانات (أول مرة أو مشكلة اتصال)، نستخدم
+      // نسخة احتياطية مدمجة كخط دفاع أخير ونحاول نبعتها للسيرفر
+      const seed = DEFAULT_TABLES;
+      seed.forEach(t => {
+        if (t.reservation) {
+          if (!t.reservation.date) t.reservation.date = new Date().toISOString().split('T')[0];
+          if (!t.reservation.createdAt) t.reservation.createdAt = new Date().toISOString();
+        }
+      });
+      DataService.set('tables', seed);
+      return seed;
     }
-    if (!Array.isArray(tables) || tables.length === 0) {
-      tables = DataService.get('tables');
-    }
+    let tables = JSON.parse(raw);
     // Normalize status names from legacy ('free' -> 'available', 'busy' -> 'occupied')
     let changed = false;
     tables.forEach(t => {
@@ -821,7 +965,8 @@ export const TableManager = {
   // 5. Settle / Checkout Table and Close Session
   checkoutTable: (tableId, paymentMethod = 'cash', discountVal = 0, discountType = 'flat') => {
     const tables = TableManager.getTables();
-    const t = tables.find(t => t.id == tableId);
+    const strId = String(tableId);
+    const t = tables.find(t => String(t.id) === strId || String(t.number) === strId);
     if (!t || !t.currentSession) throw new Error('لا توجد جلسة نشطة على هذه الطاولة');
 
     const session = t.currentSession;
@@ -863,8 +1008,8 @@ export const TableManager = {
     orders.push(completedInvoice);
     DataService.set('orders', orders);
 
-    // Reset Table to Cleaning or Available
-    t.status = TABLE_STATUS.AVAILABLE;
+    // Reset Table to Cleaning so floor staff knows it needs sanitizing
+    t.status = TABLE_STATUS.CLEANING;
     t.currentSession = null;
     t.reservation = null;
     t.total = 0;
@@ -1028,3 +1173,4 @@ if (typeof window !== 'undefined') {
 }
 
 export default AuthService;
+

@@ -424,6 +424,11 @@ import DataService from './js/dataService.js';
 // تحميل سجل الرقابة من السيرفر (بدل الأرقام الثابتة اللي كانت هنا قبل كده)
 await DataService.init(['guardLogs']);
 
+// استماع حي لتحديثات سجل الرقابة
+DataService.on(['guardLogs'], () => {
+  renderGuardTable();
+});
+
 // Enforce RBAC
 if (!AuthService.enforcePage('guard.html')) {
   // redirect

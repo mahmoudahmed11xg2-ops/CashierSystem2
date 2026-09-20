@@ -587,6 +587,12 @@ import DataService from './js/dataService.js';
 // وزرعها في الكاش المحلي لو أول مرة
 await DataService.init(['customers', 'suppliers', 'captains', 'staff']);
 
+// استماع حي لتحديثات جهات الاتصال والموظفين والطيارين
+DataService.on(['customers'], () => { if (typeof renderCustomers === 'function') renderCustomers(); });
+DataService.on(['suppliers'], () => { if (typeof renderSuppliers === 'function') renderSuppliers(); });
+DataService.on(['captains'], () => { if (typeof renderCaptains === 'function') renderCaptains(); });
+DataService.on(['staff'], () => { if (typeof renderStaff === 'function') renderStaff(); });
+
 // Enforce RBAC
 if (!AuthService.enforcePage('crm.html')) {
   // redirect

@@ -881,9 +881,13 @@ body {
 import AuthService, { ROLE_LABELS } from './auth.js';
 import DataService from './js/dataService.js';
 
-// تحميل الطلبات والمخزون والمصروفات من السيرفر (الطاولات بتتحمّل
-// أوتوماتيكيًا جوه auth.js عن طريق TableManager)
-await DataService.init(['orders', 'stock', 'expenses']);
+// تحميل الطلبات والمخزون والمصروفات والطاولات من السيرفر
+await DataService.init(['orders', 'stock', 'expenses', 'tables']);
+
+// استماع حي لأي تحديثات على مستوى النظام
+DataService.on(['orders', 'stock', 'expenses', 'tables'], () => {
+  renderDashboard();
+});
 
 // 1. Guard page access
 if (!AuthService.enforcePage('dashboard.html')) {
@@ -1309,11 +1313,6 @@ window.handleDeleteUser = function(userId) {
 
 // Initial load
 renderDashboard();
-
-// مزامنة حية بدون إعادة تحميل الصفحة
-window.addEventListener('cs:datachange', () => {
-  renderDashboard();
-});
 </script>
 
 </body>

@@ -616,6 +616,17 @@ import DataService from './js/dataService.js';
 // تحميل بيانات المخزون والريسيبي والأصناف من data/ وزرعها في الكاش المحلي
 await DataService.init(['stock', 'recipes', 'items', 'categories']);
 
+// استماع حي لتحديثات المخزون والمنيو من الكاشير أو الصفحات الأخرى
+DataService.on(['stock'], () => {
+  if (typeof renderStockTable === 'function') renderStockTable();
+});
+DataService.on(['recipes'], () => {
+  if (typeof renderRecipes === 'function') renderRecipes();
+});
+DataService.on(['items', 'categories'], () => {
+  if (typeof renderMenuItemsTable === 'function') renderMenuItemsTable();
+});
+
 // Enforce RBAC
 if (!AuthService.enforcePage('inventory.html')) {
   // redirect

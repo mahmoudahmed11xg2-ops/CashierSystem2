@@ -19,6 +19,7 @@ function createWindow() {
     }
   });
 
+  // فتح ملف النظام المحلي مباشرة بدون الحاجة لأي سيرفر
   mainWindow.loadFile(path.join(__dirname, '..', 'index.html'));
 
   // تخصيص القوائم العلوية

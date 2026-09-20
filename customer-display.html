@@ -239,6 +239,26 @@ try {
   console.warn('BroadcastChannel not supported');
 }
 
+// استماع إضافي عبر localStorage لضمان التزامن حتى في حال عدم دعم BroadcastChannel
+window.addEventListener('storage', (e) => {
+  if (e.key === 'cs_customer_display_payload') {
+    try {
+      const data = JSON.parse(e.newValue || '{}');
+      if (data && data.type === 'order_update') {
+        updateOrderUI(data);
+      }
+    } catch(err) {}
+  }
+});
+
+// قراءة الحالة الحالية عند فتح الشاشة
+try {
+  const initData = JSON.parse(localStorage.getItem('cs_customer_display_payload') || 'null');
+  if (initData && initData.type === 'order_update') {
+    updateOrderUI(initData);
+  }
+} catch(e) {}
+
 function updateOrderUI(data) {
   const items = data.items || [];
   const container = document.getElementById('itemsContainer');

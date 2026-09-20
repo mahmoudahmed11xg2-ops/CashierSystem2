@@ -1,287 +1,312 @@
 // ============================================================
-// DataService: إدارة البيانات والتخزين الدائم والمزامنة اللحظية
+//  Data Service — طبقة التخزين الذكية (مُصلحة)
+//  1) لا يمسح أي بيانات محلية لم تُرفع للسحابة بعد
+//  2) رفع أسرع + فلاش عند إغلاق الصفحة
+//  3) مزامنة لحظية بين أجهزة المحل عبر السيرفر لو موجود
 // ============================================================
+import { fetchFileFromGitHub, saveFileToGitHub, getGitHubConfig, checkGitHubRepoAccess } from './githubSync.js';
 
 export const DOMAINS = {
-  categories: { key: 'cs_cats', isObject: false },
-  items: { key: 'cs_items', isObject: false },
-  recipes: { key: 'cs_recipes', isObject: false },
-  stock: { key: 'cs_stock', isObject: false },
-  tables: { key: 'cs_tables', isObject: false },
-  customers: { key: 'cs_customers', isObject: false },
-  suppliers: { key: 'cs_suppliers', isObject: false },
-  captains: { key: 'cs_captains', isObject: false },
-  staff: { key: 'cs_staff', isObject: false },
-  users: { key: 'cs_users', isObject: false },
-  storeConfig: { key: 'cs_configs', isObject: true },
-  orders: { key: 'cs_orders', isObject: false },
-  expenses: { key: 'cs_expenses', isObject: false },
-  guardLogs: { key: 'cs_guard_logs', isObject: false },
-  shiftsLog: { key: 'cs_shifts_log', isObject: false },
-  activeShift: { key: 'cs_active_shift', isObject: true, nullable: true }
+  categories:  { key: 'cs_cats',         file: 'data/catalog/categories.json' },
+  items:       { key: 'cs_items',        file: 'data/catalog/items.json' },
+  recipes:     { key: 'cs_recipes',      file: 'data/catalog/recipes.json' },
+  stock:       { key: 'cs_stock',        file: 'data/inventory/stock.json' },
+  tables:      { key: 'cs_tables',       file: 'data/tables/tables.json' },
+  customers:   { key: 'cs_customers',    file: 'data/crm/customers.json' },
+  suppliers:   { key: 'cs_suppliers',    file: 'data/crm/suppliers.json' },
+  captains:    { key: 'cs_captains',     file: 'data/crm/captains.json' },
+  staff:       { key: 'cs_staff',        file: 'data/crm/staff.json' },
+  storeConfig: { key: 'cs_configs',      file: 'data/settings/store-config.json', isObject: true },
+  orders:      { key: 'cs_orders',       file: 'data/transactions/orders.json' },
+  expenses:    { key: 'cs_expenses',     file: 'data/transactions/expenses.json' },
+  guardLogs:   { key: 'cs_guard_logs',   file: 'data/transactions/guard-logs.json' },
+  shiftsLog:   { key: 'cs_shifts_log',   file: 'data/transactions/shifts-log.json' },
+  activeShift: { key: 'cs_active_shift', file: 'data/transactions/active-shift.json', isObject: true, nullable: true }
 };
 
-// البيانات الأولية المتكاملة للمطعم والكافيه (Default Restaurant Seed Data)
 export const DEFAULT_CATEGORIES = [
-  { id: 'c1', name: 'وجبات وساندوتشات', icon: '🍔', sort: 1 },
-  { id: 'c2', name: 'بيتزا وفطائر', icon: '🍕', sort: 2 },
-  { id: 'c3', name: 'مقبلات وسلطات', icon: '🍟', sort: 3 },
-  { id: 'c4', name: 'مشروبات وقهوة', icon: '🥤', sort: 4 },
-  { id: 'c5', name: 'حلويات', icon: '🍰', sort: 5 }
+  { id: 1, name: "مشويات" },
+  { id: 2, name: "مقبلات وسلطات" },
+  { id: 3, name: "مشروبات" },
+  { id: 4, name: "حلويات" },
+  { id: 5, name: "ساندوتشات ووجبات سريعة" }
 ];
 
-export const DEFAULT_ITEMS = [
-  { id: 'i1', name: 'برجر لحم كلاسيك سنجل', catId: 'c1', price: 120, cost: 65, tax: 14, unit: 'ساندوتش', barcode: '1001', prepTime: 12 },
-  { id: 'i2', name: 'برجر دبل تشيز بيف', catId: 'c1', price: 160, cost: 90, tax: 14, unit: 'ساندوتش', barcode: '1002', prepTime: 15 },
-  { id: 'i3', name: 'ساندوتش دجاج كرسبي مقرمش', catId: 'c1', price: 110, cost: 55, tax: 14, unit: 'ساندوتش', barcode: '1003', prepTime: 12 },
-  { id: 'i4', name: 'بيتزا مارجريتا إيطالي', catId: 'c2', price: 115, cost: 50, tax: 14, unit: 'فطيرة', barcode: '2001', prepTime: 18 },
-  { id: 'i5', name: 'بيتزا بيبروني سجق', catId: 'c2', price: 145, cost: 70, tax: 14, unit: 'فطيرة', barcode: '2002', prepTime: 18 },
-  { id: 'i6', name: 'مكرونة ألفريدو دجاج ومشروم', catId: 'c1', price: 130, cost: 60, tax: 14, unit: 'طبق', barcode: '1004', prepTime: 15 },
-  { id: 'i7', name: 'بطاطس مقلية كرسبي كبير', catId: 'c3', price: 40, cost: 15, tax: 14, unit: 'طبق', barcode: '3001', prepTime: 6 },
-  { id: 'i8', name: 'أصابع موتزاريلا مقلية (5 قطع)', catId: 'c3', price: 65, cost: 30, tax: 14, unit: 'طبق', barcode: '3002', prepTime: 8 },
-  { id: 'i9', name: 'سلطة سيزر دجاج مشوي', catId: 'c3', price: 75, cost: 35, tax: 14, unit: 'طبق', barcode: '3003', prepTime: 8 },
-  { id: 'i10', name: 'كولا / بيبسي مبرد', catId: 'c4', price: 25, cost: 15, tax: 14, unit: 'علبة', barcode: '4001', prepTime: 2 },
-  { id: 'i11', name: 'عصير برتقال طازج فريش', catId: 'c4', price: 45, cost: 20, tax: 14, unit: 'كوب', barcode: '4002', prepTime: 4 },
-  { id: 'i12', name: 'قهوة إسبريسو دوبل', catId: 'c4', price: 40, cost: 12, tax: 14, unit: 'فنجان', barcode: '4003', prepTime: 3 },
-  { id: 'i13', name: 'مولتن كيك شيكولاتة ساخنة', catId: 'c5', price: 75, cost: 30, tax: 14, unit: 'طبق', barcode: '5001', prepTime: 10 },
-  { id: 'i14', name: 'تشيز كيك صوص لوتس', catId: 'c5', price: 65, cost: 25, tax: 14, unit: 'قطعة', barcode: '5002', prepTime: 3 }
-];
+const KEY_TO_DOMAIN = {};
+for (const [n, d] of Object.entries(DOMAINS)) KEY_TO_DOMAIN[d.key] = n;
 
-export const DEFAULT_TABLES = [
-  { id: 1, number: 1, name: 'طاولة 1', seats: 4, zone: 'indoor', status: 'available', total: 0, waiter: '—' },
-  { id: 2, number: 2, name: 'طاولة 2', seats: 2, zone: 'indoor', status: 'available', total: 0, waiter: '—' },
-  { id: 3, number: 3, name: 'طاولة 3', seats: 6, zone: 'indoor', status: 'available', total: 0, waiter: '—' },
-  { id: 4, number: 4, name: 'طاولة 4', seats: 4, zone: 'indoor', status: 'available', total: 0, waiter: '—' },
-  { id: 5, number: 5, name: 'طاولة 5 (تراس)', seats: 4, zone: 'outdoor', status: 'available', total: 0, waiter: '—' },
-  { id: 6, number: 6, name: 'طاولة 6 (تراس)', seats: 4, zone: 'outdoor', status: 'available', total: 0, waiter: '—' },
-  { id: 7, number: 7, name: 'VIP عائلات', seats: 8, zone: 'vip', status: 'available', total: 0, waiter: '—' },
-  { id: 8, number: 8, name: 'طاولة 8', seats: 4, zone: 'indoor', status: 'available', total: 0, waiter: '—' }
-];
-
-export const DEFAULT_STORE_CONFIG = {
-  storeName: 'مطعم ومقهى السرايا',
-  storePhone: '01012345678',
-  storeAddress: 'فرع المعادي - شارع النصر، القاهرة',
-  tax: 14,
-  deliveryFee: 25,
-  serviceCharge: 12,
-  currency: 'ج.م',
-  paperWidth: '80mm',
-  autoPrint: 'manual',
-  receiptFooter: 'شكراً لزيارتكم ونتمنى لكم يوماً سعيداً'
-};
-
-export const DEFAULT_STOCK = [
-  { id: 'st1', name: 'لحم برجر بلدي طازج', qty: 25, unit: 'كجم', minAlert: 5, cost: 220 },
-  { id: 'st2', name: 'صدور دجاج مخلية فريش', qty: 30, unit: 'كجم', minAlert: 6, cost: 160 },
-  { id: 'st3', name: 'جبنة موتزاريلا طبيعي', qty: 18, unit: 'كجم', minAlert: 4, cost: 175 },
-  { id: 'st4', name: 'خبز برجر سمسم طري', qty: 120, unit: 'حبة', minAlert: 25, cost: 4 },
-  { id: 'st5', name: 'بطاطس نصف مقلية كرسبي', qty: 45, unit: 'كجم', minAlert: 10, cost: 40 },
-  { id: 'st6', name: 'علب مشروبات غازية كانز', qty: 96, unit: 'علبة', minAlert: 24, cost: 15 },
-  { id: 'st7', name: 'حبوب بن إسبريسو ممتازة', qty: 12, unit: 'كجم', minAlert: 2, cost: 350 }
-];
-
-export const DEFAULT_RECIPES = [
-  { id: 'r1', itemId: 'i1', ingredients: [{ stockId: 'st1', qty: 0.15 }, { stockId: 'st4', qty: 1 }] },
-  { id: 'r2', itemId: 'i2', ingredients: [{ stockId: 'st1', qty: 0.25 }, { stockId: 'st3', qty: 0.04 }, { stockId: 'st4', qty: 1 }] },
-  { id: 'r3', itemId: 'i3', ingredients: [{ stockId: 'st2', qty: 0.18 }, { stockId: 'st4', qty: 1 }] },
-  { id: 'r4', itemId: 'i4', ingredients: [{ stockId: 'st3', qty: 0.18 }] },
-  { id: 'r5', itemId: 'i5', ingredients: [{ stockId: 'st3', qty: 0.18 }] },
-  { id: 'r6', itemId: 'i7', ingredients: [{ stockId: 'st5', qty: 0.25 }] },
-  { id: 'r7', itemId: 'i10', ingredients: [{ stockId: 'st6', qty: 1 }] }
-];
-
-export const DEFAULT_CAPTAINS = [
-  { id: 'cap1', name: 'وليد صبحي صالة', phone: '01099887766', section: 'الصالة الداخلية', active: true },
-  { id: 'cap2', name: 'أحمد ربيع صالة', phone: '01122334455', section: 'التراس الخارجي', active: true },
-  { id: 'cap3', name: 'كابتن حسن دليفري', phone: '01233445566', section: 'الطيارين والتوصيل', active: true }
-];
-
-export const DEFAULT_CUSTOMERS = [
-  { id: 'cust1', name: 'م. أحمد الشناوي', phone: '01005544332', address: 'عمارة 15 - دجلة المعادي', points: 140, totalOrders: 12 },
-  { id: 'cust2', name: 'د. نورهان المهدي', phone: '01122998877', address: 'فيلا 8 - حي النرجس', points: 85, totalOrders: 7 },
-  { id: 'cust3', name: 'أستاذ طارق إبراهيم', phone: '01288776655', address: 'شارع 9 - المعادي', points: 210, totalOrders: 18 }
-];
-
-export const DEFAULT_SUPPLIERS = [
-  { id: 'sup1', name: 'مزرعة اللحوم البلدية الفاخرة', phone: '01011122233', category: 'لحوم ودواجن', balance: 0 },
-  { id: 'sup2', name: 'شركة الألبان والموتزاريلا', phone: '01044455566', category: 'أجبان ومخبوزات', balance: 0 }
-];
-
-export const DEFAULT_STAFF = [
-  { id: 'stf1', name: 'وليد صبحي', role: 'كاشير صالة', phone: '01099887766', salary: 4500, active: true },
-  { id: 'stf2', name: 'شيف مصطفى كمال', role: 'شيف عمومي (مطبخ)', phone: '01122334455', salary: 7500, active: true },
-  { id: 'stf3', name: 'علاء جلال', role: 'محاسب مالي', phone: '01288990011', salary: 5500, active: true }
-];
-
-export const DEFAULT_USERS = [
-  { id: 'usr_admin', username: 'admin', fullName: 'مدير النظام', role: 'admin', active: true, password: btoa('123456'), createdAt: new Date().toISOString() },
-  { id: '3SNhsc2ilvc42YWXhKpLzBO5Yu32', username: 'mahmoud.mostfa', email: 'mahmoud.mostfa@app.com', fullName: 'Mahmoud Mostafa', role: 'admin', active: true, password: btoa('123456'), createdAt: new Date().toISOString() },
-  { id: 'usr_cashier', username: 'cashier', fullName: 'وليد صبحي (كاشير)', role: 'cashier', active: true, password: btoa('123456'), createdAt: new Date().toISOString() },
-  { id: 'usr_manager', username: 'manager', fullName: 'يوسف الصباغ (مشرف فرع)', role: 'manager', active: true, password: btoa('123456'), createdAt: new Date().toISOString() },
-  { id: 'usr_accounts', username: 'accounts', fullName: 'علاء جلال (محاسب)', role: 'accounts', active: true, password: btoa('123456'), createdAt: new Date().toISOString() }
-];
-
-const SEED_MAP = {
-  categories: DEFAULT_CATEGORIES,
-  items: DEFAULT_ITEMS,
-  tables: DEFAULT_TABLES,
-  storeConfig: DEFAULT_STORE_CONFIG,
-  stock: DEFAULT_STOCK,
-  recipes: DEFAULT_RECIPES,
-  captains: DEFAULT_CAPTAINS,
-  customers: DEFAULT_CUSTOMERS,
-  suppliers: DEFAULT_SUPPLIERS,
-  staff: DEFAULT_STAFF,
-  users: DEFAULT_USERS,
-  orders: [],
-  expenses: [],
-  guardLogs: [],
-  shiftsLog: [],
-  activeShift: null
-};
-
-// قناة المزامنة الحية بين النوافذ والتبويبات
-let syncChannel = null;
-try {
-  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-    syncChannel = new BroadcastChannel('cs_pos_sync');
-    syncChannel.onmessage = (event) => {
-      if (event.data && event.data.type === 'datachange') {
-        const { domain, value } = event.data;
-        // إشعار الصفحة محلياً بالتغيير القادم من نافذة أخرى دون عمل reload
-        window.dispatchEvent(new CustomEvent('cs:datachange', {
-          detail: { domain, value, remote: true }
-        }));
-      }
-    };
-  }
-} catch (e) {
-  console.warn('BroadcastChannel sync initialized with fallback:', e);
+// ── إدارة "بيانات لم تُرفع بعد" (dirty flags تدوم بين تحديثات الصفحات) ──
+const DIRTY_KEY = 'cs_dirty_domains';
+function getDirtySet() {
+  try { return new Set(JSON.parse(localStorage.getItem(DIRTY_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+function markDirty(name) {
+  const s = getDirtySet(); s.add(name);
+  localStorage.setItem(DIRTY_KEY, JSON.stringify([...s]));
+}
+function clearDirty(name) {
+  const s = getDirtySet(); s.delete(name);
+  localStorage.setItem(DIRTY_KEY, JSON.stringify([...s]));
 }
 
-// مراقبة Storage Event لتزامن المتصفح التلقائي بين التبويبات
+function readCache(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw !== null ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function writeCache(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); }
+  catch (err) { console.warn('DataService: تعذر الحفظ المحلي', key, err); }
+}
+
+// ── مزامنة لحظية بين أجهزة المحل عبر سيرفر Socket.io (اختياري) ──
+let socket = null;
+function connectRealtimeServer() {
+  if (typeof window === 'undefined' || socket) return;
+  // يعمل فقط لو الصفحة متخدمة من سيرفرنا (server.js)
+  const s = document.createElement('script');
+  s.src = '/socket.io/socket.io.js';
+  s.onload = () => {
+    try {
+      socket = window.io();
+      socket.on('cs:update', ({ file, value }) => {
+        for (const [n, d] of Object.entries(DOMAINS)) {
+          if (d.file === file) {
+            writeCache(d.key, value);
+            clearDirty(n);
+            window.dispatchEvent(new CustomEvent('cs:datachange', { detail: { domain: n, value, remote: true } }));
+          }
+        }
+      });
+    } catch (e) {}
+  };
+  s.onerror = () => {}; // لا سيرفر → نكمل بـ GitHub فقط
+  document.head.appendChild(s);
+}
+
+// ── سحب هادئ من GitHub: لا يمسح أبداً بيانات "متسخة" (لم تُرفع) ──
+async function syncFromGitHubQuietly(domainNames = []) {
+  const cfg = getGitHubConfig();
+  if (!cfg.token || !cfg.repo || !cfg.autoSync) return;
+
+  const dirty = getDirtySet();
+  const list = domainNames.length ? domainNames : Object.keys(DOMAINS);
+
+  for (const name of list) {
+    const domain = DOMAINS[name];
+    if (!domain || !domain.file) continue;
+    if (dirty.has(name)) {
+      // عندنا نسخة أحدث لم تُرفع → ارفعها بدل ما تسحب القديمة فوقها
+      schedulePushToGitHub(name, get(name));
+      continue;
+    }
+    try {
+      const res = await fetchFileFromGitHub(domain.file);
+      if (res && res.content !== undefined) {
+        writeCache(domain.key, res.content);
+        window.dispatchEvent(new CustomEvent('cs:datachange', { detail: { domain: name, value: res.content, remote: true } }));
+      }
+    } catch (e) { console.warn(`[SilentSync] تعذرت مزامنة ${name}`, e); }
+  }
+}
+
+// ── بث بين تبويبات نفس المتصفح ──
+let syncChannel = null;
+try {
+  syncChannel = new BroadcastChannel('cs_pos_sync_channel');
+  syncChannel.onmessage = (event) => {
+    if (event.data && event.data.domain) {
+      window.dispatchEvent(new CustomEvent('cs:datachange', {
+        detail: { domain: event.data.domain, remote: !!event.data.remote, fromOtherTab: true }
+      }));
+    }
+  };
+} catch (e) {}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (!e.key) return;
-    for (const [name, domain] of Object.entries(DOMAINS)) {
-      if (domain.key === e.key && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          window.dispatchEvent(new CustomEvent('cs:datachange', {
-            detail: { domain: name, value: parsed, remote: true }
-          }));
-        } catch {}
+    for (const [domName, domCfg] of Object.entries(DOMAINS)) {
+      if (domCfg.key === e.key) {
+        window.dispatchEvent(new CustomEvent('cs:datachange', {
+          detail: { domain: domName, remote: false, fromStorageEvent: true }
+        }));
+        break;
       }
     }
   });
 }
 
-function emptyFor(domain) {
-  return domain.isObject ? (domain.nullable ? null : {}) : [];
-}
-
-function clone(value) {
-  return value === undefined ? value : JSON.parse(JSON.stringify(value));
-}
-
-// قراءة البيانات من التخزين الدائم LocalStorage مع زراعة البيانات الافتراضية إن كانت فارغة
-export function get(name) {
-  const domain = DOMAINS[name];
-  if (!domain) return [];
-
-  try {
-    const raw = localStorage.getItem(domain.key);
-    if (raw !== null) {
-      const parsed = JSON.parse(raw);
-      // إذا كانت مصفوفة وتحتوي عناصر، أو كائن غير فارغ، أرجعها
-      if (domain.isObject) {
-        if (parsed !== null && Object.keys(parsed).length > 0) return parsed;
-      } else if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.warn(`Error reading domain ${name}:`, e);
-  }
-
-  // إذا لم تكن موجودة أو فارغة، نأخذ البيانات الافتراضية ونحفظها تلقائياً
-  if (SEED_MAP[name] !== undefined) {
-    const defaultVal = clone(SEED_MAP[name]);
-    try {
-      localStorage.setItem(domain.key, JSON.stringify(defaultVal));
-    } catch {}
-    return defaultVal;
-  }
-
-  return emptyFor(domain);
-}
-
-// حفظ البيانات في التخزين الدائم LocalStorage وإرسال إشعار لحظي بدون ريفريش للصفحة
-export function set(name, value) {
-  const domain = DOMAINS[name];
-  if (!domain) return;
-
-  try {
-    localStorage.setItem(domain.key, JSON.stringify(value));
-  } catch (e) {
-    console.error(`Error saving domain ${name} to localStorage:`, e);
-  }
-
-  // إرسال حدث محلي للصفحة الحالية
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('cs:datachange', {
-      detail: { domain: name, value: clone(value), remote: false }
-    }));
-
-    // إرسال للتبويبات والنوافذ الأخرى المفتوحة (POS، الطاولات، شاشة العميل، الطلبات)
-    if (syncChannel) {
-      try {
-        syncChannel.postMessage({
-          type: 'datachange',
-          domain: name,
-          value: clone(value)
-        });
-      } catch (e) {
-        console.warn('BroadcastChannel postMessage error:', e);
-      }
-    }
+function broadcastChange(name, remote = false) {
+  if (syncChannel) {
+    try { syncChannel.postMessage({ domain: name, remote: !!remote, timestamp: Date.now() }); } catch (err) {}
   }
 }
 
-// تحميل دومين معين
-export async function loadDomain(name) {
-  return get(name);
-}
-
-// تهيئة الدومينات المطلوبة
-export async function init(names = []) {
-  return Promise.all(names.map(loadDomain));
-}
-
-// الاستماع لتغييرات البيانات لأي شاشة
-export function on(domainName, callback) {
-  if (typeof window === 'undefined') return () => {};
-  const handler = (e) => {
-    if (!domainName || e.detail?.domain === domainName) {
-      callback(e.detail?.value, e.detail?.remote);
+export function onDataChange(domains, callback) {
+  const domainList = Array.isArray(domains) ? domains : [domains];
+  const listener = (event) => {
+    const changed = event.detail?.domain;
+    if (domainList.includes(changed) || domainList.includes('*')) {
+      try { callback(event.detail); } catch (err) { console.error('listener error ' + changed, err); }
     }
   };
-  window.addEventListener('cs:datachange', handler);
-  return () => window.removeEventListener('cs:datachange', handler);
+  window.addEventListener('cs:datachange', listener);
+  return () => window.removeEventListener('cs:datachange', listener);
+}
+
+// ── رفع للسحابة: 800ms فقط + فلاش عند قفل الصفحة ──
+const pendingSyncTimers = {};
+function schedulePushToGitHub(name, value) {
+  const cfg = getGitHubConfig();
+  const domain = DOMAINS[name];
+  if (!domain || !domain.file) return;
+  if (!cfg.token || !cfg.repo || !cfg.autoSync) return; // يتسخّر لحد ما يتظبط GitHub
+
+  if (pendingSyncTimers[name]) clearTimeout(pendingSyncTimers[name]);
+  pendingSyncTimers[name] = setTimeout(async () => {
+    try {
+      await saveFileToGitHub(domain.file, value, `Auto update: ${name}`);
+      clearDirty(name);
+    } catch (err) {
+      console.warn(`[SilentPush] تعذر رفع ${name}`, err); // يفضل متسخ → محمي من السحب العكسي
+    }
+  }, 800);
+}
+
+// فلاش: لو قفلت الصفحة قبل ما الرفع يحصل
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => {
+    const dirty = getDirtySet();
+    const cfg = getGitHubConfig();
+    if (!cfg.token || !cfg.repo) return;
+    for (const name of dirty) {
+      const domain = DOMAINS[name];
+      const value = readCache(domain.key);
+      if (value === null) continue;
+      try {
+        const jsonStr = JSON.stringify(value, null, 2);
+        const bytes = new TextEncoder().encode(jsonStr);
+        let bin = '';
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        fetch(`https://api.github.com/repos/${cfg.repo}/contents/${domain.file}`, {
+          method: 'PUT', keepalive: true,
+          headers: {
+            'Authorization': `Bearer ${cfg.token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ message: `Flush: ${name}`, content: btoa(bin), branch: cfg.branch || 'main' })
+        });
+      } catch (e) {}
+    }
+  });
+}
+
+async function loadDomain(name) {
+  const domain = DOMAINS[name];
+  if (!domain) return [];
+  let cached = readCache(domain.key);
+  if (cached !== null) {
+    if (name === 'categories' && Array.isArray(cached) && cached.length === 0) {
+      cached = DEFAULT_CATEGORIES;
+      writeCache(domain.key, cached);
+    }
+    return cached;
+  }
+  try {
+    const res = await fetch('/' + domain.file);
+    if (res.ok) {
+      const data = await res.json();
+      if (data !== undefined && data !== null) { writeCache(domain.key, data); return data; }
+    }
+  } catch (err) { console.warn(`تعذر قراءة ${domain.file}`, err); }
+
+  if (name === 'categories') { writeCache(domain.key, DEFAULT_CATEGORIES); return DEFAULT_CATEGORIES; }
+  const fallback = domain.isObject ? (domain.nullable ? null : {}) : [];
+  writeCache(domain.key, fallback);
+  return fallback;
+}
+
+async function init(names = []) {
+  await Promise.all(names.map(loadDomain));
+  connectRealtimeServer();
+  syncFromGitHubQuietly(names).catch(() => {});
+}
+
+function get(name) {
+  const domain = DOMAINS[name];
+  if (!domain) return [];
+  const value = readCache(domain.key);
+  return value ?? (domain.isObject ? (domain.nullable ? null : {}) : []);
+}
+
+function set(name, value) {
+  const domain = DOMAINS[name];
+  if (!domain) return;
+  writeCache(domain.key, value);
+  markDirty(name);
+  window.dispatchEvent(new CustomEvent('cs:datachange', { detail: { domain: name, value, remote: false } }));
+  broadcastChange(name, false);
+  if (socket && socket.connected) {
+    try { socket.emit('cs:update', { file: domain.file, value }); clearDirty(name); } catch (e) {}
+  }
+  schedulePushToGitHub(name, value);
+}
+
+// ── بدائل آمنة للكتابة/القراءة المباشرة في الصفحات ──
+export function setByKey(key, value) {
+  const name = KEY_TO_DOMAIN[key];
+  if (name) set(name, value);
+  else writeCache(key, value);
+}
+export function getByKey(key) {
+  const name = KEY_TO_DOMAIN[key];
+  if (name) return get(name);
+  return readCache(key);
+}
+
+async function pushAllToGitHub() {
+  const cfg = getGitHubConfig();
+  if (!cfg.token || !cfg.repo) throw new Error('يرجى ملء بيانات المستودع والـ Token في صفحة الإعدادات.');
+  const repoInfo = await checkGitHubRepoAccess(cfg);
+  const results = [];
+  for (const [name, domain] of Object.entries(DOMAINS)) {
+    const val = get(name);
+    if (val !== undefined && val !== null) {
+      await saveFileToGitHub(domain.file, val, `Manual Push: ${name}`);
+      clearDirty(name);
+      results.push({ name, file: domain.file, ok: true });
+    }
+  }
+  return { results, totalPushed: results.length, repoName: repoInfo.fullName };
+}
+
+async function pullAllFromGitHub() {
+  const cfg = getGitHubConfig();
+  if (!cfg.token || !cfg.repo) throw new Error('يرجى ملء بيانات المستودع والـ Token في صفحة الإعدادات.');
+  const repoInfo = await checkGitHubRepoAccess(cfg);
+  const results = [];
+  const dirty = getDirtySet();
+  for (const [name, domain] of Object.entries(DOMAINS)) {
+    if (dirty.has(name)) continue; // لا تسحب فوق بيانات محلية أحدث
+    const res = await fetchFileFromGitHub(domain.file);
+    if (res && res.content !== undefined) {
+      writeCache(domain.key, res.content);
+      window.dispatchEvent(new CustomEvent('cs:datachange', { detail: { domain: name, value: res.content, remote: true } }));
+      broadcastChange(name, true);
+      results.push({ name, file: domain.file, ok: true });
+    }
+  }
+  if (results.length === 0) throw new Error(`المستودع (${repoInfo.fullName}) لا يحتوي على بيانات بعد — ارفع أولاً بزر "رفع بيانات المحل للسحابة".`);
+  return { results, totalPulled: results.length, repoName: repoInfo.fullName };
 }
 
 export const DataService = {
-  init,
-  loadDomain,
-  get,
-  set,
-  on,
-  DOMAINS,
-  pushAllToGitHub: async () => ({ success: true, message: 'البيانات محفوظة ومزامنة محلياً بالكامل.' }),
-  pullAllFromGitHub: async () => ({ success: true, message: 'البيانات محدثة محلياً.' }),
-  syncFromGitHubQuietly: async () => ({ success: true }),
-  syncFromServer: async () => ({ success: true })
+  init, loadDomain, get, set, getByKey, setByKey,
+  on: onDataChange, DOMAINS,
+  pushAllToGitHub, pullAllFromGitHub, syncFromGitHubQuietly
 };
-
 export default DataService;

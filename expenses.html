@@ -439,6 +439,11 @@ import DataService from './js/dataService.js';
 // تحميل المصروفات من السيرفر (بدل الأرقام الثابتة اللي كانت هنا قبل كده)
 await DataService.init(['expenses']);
 
+// استماع حي لتحديثات المصروفات عبر شبكة المزامنة
+DataService.on(['expenses'], () => {
+  renderExpensesTable();
+});
+
 // Enforce RBAC
 if (!AuthService.enforcePage('expenses.html')) {
   // redirect
