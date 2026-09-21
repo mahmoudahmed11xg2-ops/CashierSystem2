@@ -81,7 +81,7 @@ export function generateReceiptHTML(invoice, options = {}) {
   };
 
   const typeLabels = {
-    dine: 'صالة (محلي)',
+    dine: 'صالة',
     take: 'تيك أواي (سفري)',
     delivery: 'ديليفري (توصيل منازل)'
   };
@@ -420,7 +420,7 @@ export function generateReceiptHTML(invoice, options = {}) {
         </div>
       ` : ''}
       <div class="sum-total-row">
-        <span>الإجمالي النهائي:</span>
+        <span>الإجمالي:</span>
         <span>${total.toLocaleString('ar-EG')} ج</span>
       </div>
       <div class="sum-row" style="margin-top:5px;font-size:11.5px;">
@@ -557,7 +557,7 @@ export function generateKitchenTicketHTML(order, round = null) {
   const printableWidth = paperWidth === '58mm' ? '48mm' : '72mm';
 
   const typeLabels = {
-    dine: 'صالة (محلي)',
+    dine: 'صالة',
     take: 'تيك أواي (سفري)',
     delivery: 'ديليفري (توصيل منازل)'
   };

@@ -1509,7 +1509,7 @@ function showReceipt(inv) {
     <hr style="border:none;border-top:1px dashed var(--border-strong);margin:6px 0;" />
     <div class="r-row"><span>المجموع:</span><span>${(inv.subtotal||0).toLocaleString('ar-EG')} ج</span></div>
     ${inv.discount > 0 ? `<div class="r-row"><span>خصم:</span><span>- ${(inv.discount).toLocaleString('ar-EG')} ج</span></div>` : ''}
-    <div class="r-row r-total"><span>الإجمالي النهائي:</span><span>${(inv.total||0).toLocaleString('ar-EG')} ج</span></div>
+    <div class="r-row r-total"><span>الإجمالي:</span><span>${(inv.total||0).toLocaleString('ar-EG')} ج</span></div>
     <div class="r-row" style="margin-top:6px;font-size:12px;"><span>طريقة السداد:</span><span>${payLabels[inv.payMethod] || inv.payMethod}</span></div>
     <div style="margin-top:10px;text-align:center;font-size:10.5px;color:var(--text-muted);background:#f1f5f9;padding:4px;border-radius:4px;">
       🖨️ مجهزة لطابعة Rongta RP336 (عرض 80 مم)

@@ -637,7 +637,7 @@ window.viewOrderDetails = function(orderId) {
     <hr style="border:none;border-top:1px solid var(--border);margin:8px 0;" />
     <div class="inv-row"><span>المجموع الفرعي:</span><span>${(o.subtotal || o.total || 0).toLocaleString('ar-EG')} ج</span></div>
     ${o.discount > 0 ? `<div class="inv-row"><span>الخصم:</span><span>- ${(o.discount).toLocaleString('ar-EG')} ج</span></div>` : ''}
-    <div class="inv-row inv-total"><span>الإجمالي النهائي:</span><span>${(o.total || 0).toLocaleString('ar-EG')} ج</span></div>
+    <div class="inv-row inv-total"><span>الإجمالي:</span><span>${(o.total || 0).toLocaleString('ar-EG')} ج</span></div>
     <div class="inv-row" style="margin-top:6px;"><span>طريقة الدفع:</span><span>${payLabels[o.payMethod] || o.payMethod}</span></div>
   `;
 
