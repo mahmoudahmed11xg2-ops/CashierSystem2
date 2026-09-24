@@ -41,6 +41,21 @@ export const PRINTER_CONFIG_DEFAULT = {
   customerScreenPosition: 'top' // 'top' (above display 1, matching Diebold Nixdorf), 'right', 'left'
 };
 
+export const DEFAULT_RECEIPT_BLOCKS = [
+  { id: 'header_brand', enabled: true, title: 'شعار واسم المنشأة والعنوان الفرعي', icon: '🏪' },
+  { id: 'store_contact', enabled: true, title: 'العنوان ورقم الهاتف والبطاقة الضريبية', icon: '📍' },
+  { id: 'order_badge', enabled: true, title: 'نوع الطلب ورقم الطاولة', icon: '🏷️' },
+  { id: 'order_meta', enabled: true, title: 'بيانات الفاتورة والكاشير والعميل', icon: '🧾' },
+  { id: 'order_comment', enabled: true, title: 'ملاحظات وكومنت الطلب', icon: '📝' },
+  { id: 'items_table', enabled: true, title: 'جدول الأصناف والكميات والأسعار', icon: '🍽️' },
+  { id: 'rounds_detail', enabled: true, title: 'ملخص جولات الـ Rounds السابقة', icon: '⏱️' },
+  { id: 'totals_summary', enabled: true, title: 'ملخص الحساب والإجمالي وطريقة السداد', icon: '💰' },
+  { id: 'wifi_box', enabled: true, title: 'بيانات شبكة الواي فاي للعملاء (WiFi)', icon: '📶' },
+  { id: 'policy_note', enabled: true, title: 'ملاحظات وسياسة المنشأة والاسترجاع', icon: '📜' },
+  { id: 'footer_text', enabled: true, title: 'رسالة الشكر والترحيب بأسفل الفاتورة', icon: '🙏' },
+  { id: 'barcode', enabled: true, title: 'كود الباركود برقم الفاتورة', icon: '🔲' }
+];
+
 export function getPrinterConfig() {
   try {
     const raw = localStorage.getItem('cs_configs');
@@ -154,6 +169,161 @@ export function generateReceiptHTML(invoice, options = {}) {
   const subtotal = parseFloat(invoice.subtotal) || (items.reduce((s, it) => s + (parseFloat(it.price) || 0) * (parseInt(it.qty) || 1), 0));
   const discount = parseFloat(invoice.discount) || 0;
   const total = parseFloat(invoice.total) || Math.max(0, subtotal - discount);
+
+  // تعريف قوالب البلوكات القابلة لإعادة الترتيب (بحط دي فوق دي تحت)
+  const blockRenderers = {
+    header_brand: () => `
+      <div class="header-logo-text">${cfg.storeName || 'اسم المنشأة'}</div>
+      ${cfg.receiptHeaderSubtitle ? `<div class="header-subtitle">${cfg.receiptHeaderSubtitle}</div>` : ''}
+    `,
+    store_contact: () => `
+      ${cfg.showStoreAddress !== false && cfg.storeAddress ? `<div class="header-info">📍 ${cfg.storeAddress}</div>` : ''}
+      ${cfg.showStorePhone !== false && cfg.storePhone ? `<div class="header-info">📞 ${cfg.storePhone}</div>` : ''}
+      ${cfg.showTaxNumber !== false && (cfg.receiptTaxNumber || cfg.taxNumber) ? `<div class="header-info">الرقم الضريبي/السجل: ${cfg.receiptTaxNumber || cfg.taxNumber}</div>` : ''}
+    `,
+    order_badge: () => `
+      <div class="double-line"></div>
+      <div class="order-type-badge">
+        ${typeLabels[invoice.type] || 'طلب مبيعات'} ${invoice.tableLabel ? `— ${invoice.tableLabel}` : ''}
+      </div>
+    `,
+    order_meta: () => `
+      <div class="meta-box">
+        <div class="meta-row">
+          <span>رقم الفاتورة:</span>
+          <strong>#${invoice.id || '---'}</strong>
+        </div>
+        ${cfg.showDateTime !== false ? `
+        <div class="meta-row">
+          <span>التاريخ والوقت:</span>
+          <span>${dateStr} - ${timeStr}</span>
+        </div>` : ''}
+        ${cfg.showCashierName !== false ? `
+        <div class="meta-row">
+          <span>الكاشير:</span>
+          <span>${cashierName}</span>
+        </div>` : ''}
+        ${invoice.waiter && invoice.waiter !== '—' ? `
+          <div class="meta-row">
+            <span>الويتر المسؤول:</span>
+            <strong>${invoice.waiter}</strong>
+          </div>
+        ` : ''}
+        ${cfg.showCustomerInfo !== false && invoice.customer ? `
+          <div class="meta-row">
+            <span>اسم العميل:</span>
+            <strong>${invoice.customer}</strong>
+          </div>
+        ` : ''}
+        ${cfg.showCustomerInfo !== false && invoice.customerPhone ? `
+          <div class="meta-row">
+            <span>هاتف العميل:</span>
+            <span>${invoice.customerPhone}</span>
+          </div>
+        ` : ''}
+        ${invoice.dAddr ? `
+          <div class="meta-row" style="flex-direction:column;align-items:flex-start;background:#f9f9f9;padding:3px;border-radius:2px;margin:2px 0;">
+            <span style="font-weight:bold;">عنوان التوصيل:</span>
+            <span>${invoice.dAddr}</span>
+          </div>
+        ` : ''}
+        ${invoice.dCapName ? `
+          <div class="meta-row">
+            <span>الطيار المسؤول:</span>
+            <strong>${invoice.dCapName}</strong>
+          </div>
+        ` : ''}
+      </div>
+    `,
+    order_comment: () => {
+      const comment = invoice.comment || invoice.orderComment || invoice.note;
+      if (!comment || cfg.showOrderComment === false) return '';
+      return `
+        <div class="receipt-comment-box" style="background:#f4f4f5;border:1.5px dashed #000;padding:5px 8px;margin:5px 0;font-size:12px;border-radius:3px;">
+          <div style="font-weight:900;font-size:11px;color:#000;">📝 ${cfg.orderCommentLabel || 'ملاحظات الفاتورة:'}</div>
+          <div style="font-weight:700;margin-top:2px;font-size:12.5px;color:#111;">${comment}</div>
+        </div>
+      `;
+    },
+    items_table: () => `
+      <div class="dashed-line"></div>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th class="col-name">الصنف</th>
+            <th class="col-qty">العدد</th>
+            <th class="col-price">السعر</th>
+            <th class="col-total">الإجمالي</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
+      <div class="dashed-line"></div>
+    `,
+    rounds_detail: () => roundsHtml,
+    totals_summary: () => `
+      <div class="summary-box">
+        <div class="sum-row">
+          <span>المجموع الفرعي:</span>
+          <span>${subtotal.toLocaleString('ar-EG')} ج</span>
+        </div>
+        ${discount > 0 ? `
+          <div class="sum-row" style="font-weight:700;">
+            <span>الخصم الممنوح:</span>
+            <span>- ${discount.toLocaleString('ar-EG')} ج</span>
+          </div>
+        ` : ''}
+        <div class="sum-total-row">
+          <span>الإجمالي:</span>
+          <span>${total.toLocaleString('ar-EG')} ج</span>
+        </div>
+        <div class="sum-row" style="margin-top:5px;font-size:11.5px;">
+          <span>طريقة السداد:</span>
+          <strong>${payLabels[invoice.payMethod] || invoice.payMethod || 'كاش'}</strong>
+        </div>
+        <div class="sum-row" style="font-size:11.5px;">
+          <span>حالة الفاتورة:</span>
+          <strong>${invoice.status === 'paid' ? 'مدفوعة بالكامل ✓' : 'معلقة'}</strong>
+        </div>
+      </div>
+      <div class="double-line"></div>
+    `,
+    wifi_box: () => cfg.receiptWifiInfo ? `
+      <div style="text-align:center;font-size:10.5px;border:1px dashed #666;padding:4px 6px;margin:5px 0;border-radius:3px;background:#fafafa;">
+        📶 <strong>شبكة الضيوف:</strong> ${cfg.receiptWifiInfo}
+      </div>
+    ` : '',
+    policy_note: () => cfg.receiptPolicyNote ? `
+      <div style="font-size:9.5px;color:#444;margin:4px 0 6px;line-height:1.4;text-align:center;border-top:1px dotted #888;padding-top:4px;">
+        ${cfg.receiptPolicyNote}
+      </div>
+    ` : '',
+    footer_text: () => `
+      <div class="footer-box">
+        <div class="footer-note">${cfg.receiptFooter || 'شكرًا لزيارتكم!'}</div>
+        <div style="font-size:9.5px;color:#555;margin-top:4px;">نظام إدارة المطاعم والكاشير المتكامل</div>
+      </div>
+    `,
+    barcode: () => (cfg.showBarcode !== false && cfg.showReceiptBarcode !== false) ? `
+      <div style="text-align:center;margin:6px 0;">
+        ${generateBarcodeSVG(invoice.id || Date.now())}
+      </div>
+    ` : ''
+  };
+
+  // ترتيب البلوكات بحسب ما قام بتحديده المستخدم
+  const activeBlocks = (Array.isArray(cfg.receiptBlocks) && cfg.receiptBlocks.length > 0)
+    ? cfg.receiptBlocks
+    : DEFAULT_RECEIPT_BLOCKS;
+
+  let renderedBlocksHtml = '';
+  activeBlocks.forEach(blk => {
+    if (blk && blk.enabled !== false && blockRenderers[blk.id]) {
+      renderedBlocksHtml += blockRenderers[blk.id]();
+    }
+  });
 
   return `
 <!DOCTYPE html>
@@ -353,124 +523,7 @@ export function generateReceiptHTML(invoice, options = {}) {
 </head>
 <body>
   <div class="receipt-container">
-    <div class="header-logo-text">${cfg.storeName}</div>
-    <div class="header-subtitle">${cfg.receiptHeaderSubtitle || 'بون فواتير ومبيعات إلكترونية'}</div>
-    ${cfg.showStoreAddress !== false && cfg.storeAddress ? `<div class="header-info">📍 ${cfg.storeAddress}</div>` : ''}
-    ${cfg.showStorePhone !== false && cfg.storePhone ? `<div class="header-info">📞 ${cfg.storePhone}</div>` : ''}
-    ${cfg.showTaxNumber !== false && cfg.taxNumber ? `<div class="header-info">الرقم الضريبي: ${cfg.taxNumber}</div>` : ''}
-
-    <div class="double-line"></div>
-
-    <div class="order-type-badge">
-      ${typeLabels[invoice.type] || 'طلب مبيعات'} ${invoice.tableLabel ? `— ${invoice.tableLabel}` : ''}
-    </div>
-
-    <div class="meta-box">
-      <div class="meta-row">
-        <span>رقم الفاتورة:</span>
-        <strong>#${invoice.id || '---'}</strong>
-      </div>
-      <div class="meta-row">
-        <span>التاريخ والوقت:</span>
-        <span>${dateStr} - ${timeStr}</span>
-      </div>
-      ${cfg.showCashierName !== false ? `
-      <div class="meta-row">
-        <span>الكاشير:</span>
-        <span>${cashierName}</span>
-      </div>` : ''}
-      ${invoice.waiter && invoice.waiter !== '—' ? `
-        <div class="meta-row">
-          <span>الويتر المسؤول:</span>
-          <strong>${invoice.waiter}</strong>
-        </div>
-      ` : ''}
-      ${cfg.showCustomerInfo !== false && invoice.customer ? `
-        <div class="meta-row">
-          <span>اسم العميل:</span>
-          <strong>${invoice.customer}</strong>
-        </div>
-      ` : ''}
-      ${cfg.showCustomerInfo !== false && invoice.customerPhone ? `
-        <div class="meta-row">
-          <span>هاتف العميل:</span>
-          <span>${invoice.customerPhone}</span>
-        </div>
-      ` : ''}
-      ${invoice.dAddr ? `
-        <div class="meta-row" style="flex-direction:column;align-items:flex-start;background:#f9f9f9;padding:3px;border-radius:2px;margin:2px 0;">
-          <span style="font-weight:bold;">عنوان التوصيل:</span>
-          <span>${invoice.dAddr}</span>
-        </div>
-      ` : ''}
-      ${invoice.dCapName ? `
-        <div class="meta-row">
-          <span>الطيار المسؤول:</span>
-          <strong>${invoice.dCapName}</strong>
-        </div>
-      ` : ''}
-    </div>
-
-    ${(invoice.comment || invoice.orderComment || invoice.note) && cfg.showOrderComment !== false ? `
-      <div class="receipt-comment-box" style="background:#f4f4f5;border:1.5px dashed #000;padding:5px 8px;margin:5px 0;font-size:12px;border-radius:3px;">
-        <div style="font-weight:900;font-size:11px;color:#000;">📝 ${cfg.orderCommentLabel || 'ملاحظات الفاتورة:'}</div>
-        <div style="font-weight:700;margin-top:2px;font-size:12.5px;color:#111;">${invoice.comment || invoice.orderComment || invoice.note}</div>
-      </div>
-    ` : ''}
-
-    <div class="dashed-line"></div>
-
-    <table class="items-table">
-      <thead>
-        <tr>
-          <th class="col-name">الصنف</th>
-          <th class="col-qty">العدد</th>
-          <th class="col-price">السعر</th>
-          <th class="col-total">الإجمالي</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${itemsHtml}
-      </tbody>
-    </table>
-
-    <div class="dashed-line"></div>
-
-    ${roundsHtml}
-
-    <div class="summary-box">
-      <div class="sum-row">
-        <span>المجموع الفرعي:</span>
-        <span>${subtotal.toLocaleString('ar-EG')} ج</span>
-      </div>
-      ${discount > 0 ? `
-        <div class="sum-row" style="font-weight:700;">
-          <span>الخصم الممنوح:</span>
-          <span>- ${discount.toLocaleString('ar-EG')} ج</span>
-        </div>
-      ` : ''}
-      <div class="sum-total-row">
-        <span>الإجمالي:</span>
-        <span>${total.toLocaleString('ar-EG')} ج</span>
-      </div>
-      <div class="sum-row" style="margin-top:5px;font-size:11.5px;">
-        <span>طريقة السداد:</span>
-        <strong>${payLabels[invoice.payMethod] || invoice.payMethod || 'كاش'}</strong>
-      </div>
-      <div class="sum-row" style="font-size:11.5px;">
-        <span>حالة الفاتورة:</span>
-        <strong>${invoice.status === 'paid' ? 'مدفوعة بالكامل ✓' : 'معلقة'}</strong>
-      </div>
-    </div>
-
-    <div class="double-line"></div>
-
-    <div class="footer-box">
-      <div class="footer-note">${cfg.receiptFooter}</div>
-      ${cfg.receiptPolicyNote ? `<div style="font-size:9.5px;color:#444;margin:4px 0 6px;line-height:1.4;">${cfg.receiptPolicyNote}</div>` : ''}
-      ${cfg.showBarcode !== false ? generateBarcodeSVG(invoice.id || Date.now()) : ''}
-      <div style="font-size:9.5px;color:#555;margin-top:4px;">نظام إدارة المطاعم والكاشير المتكامل</div>
-    </div>
+    ${renderedBlocksHtml}
 
     <div class="tear-guide">
       ✂ - - - - - - - - قاطع الورق الآلي - - - - - - - - ✂
@@ -836,6 +889,7 @@ export function printTestReceipt() {
     total: 450,
     payMethod: 'cash',
     status: 'paid',
+    comment: 'ملاحظة تجريبية: يرجى تجهيز الطلب سريعاً بدون شطة وبدون سكر إضافي 🌶️',
     date: new Date().toLocaleDateString('ar-EG'),
     time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
   };
@@ -880,6 +934,7 @@ export async function printDirectESC_POS(invoice) {
 }
 
 export default {
+  DEFAULT_RECEIPT_BLOCKS,
   getPrinterConfig,
   savePrinterConfig,
   generateReceiptHTML,

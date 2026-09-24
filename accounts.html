@@ -688,8 +688,9 @@ window.handleCloseShift = async function(e) {
 
     // Send Excel + Report summary to Telegram
     const tgRes = await ShiftReportService.sendShiftReportToTelegram(reportData);
-    if (tgRes && tgRes.success) {
-      showToast('✅ تم إرسال تقرير وإكسيل الوردية إلى تليجرام الإدارة والأونر بنجاح!');
+    if (tgRes && (tgRes.success || tgRes.ok)) {
+      const count = tgRes.sentCount || 1;
+      showToast(`✅ تم إرسال تقرير وإكسيل الوردية إلى (${count}) مستلمين على تيليجرام بنجاح!`);
     } else {
       console.warn('Telegram send notice:', tgRes);
       showToast('ℹ️ تم تقفيل الوردية محلياً، وجاري تحميل نسخة إكسيل احتياطية.');

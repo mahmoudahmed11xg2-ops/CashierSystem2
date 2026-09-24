@@ -2,8 +2,40 @@
 //  Electron Main Process — تشغيل نظام الكاشير كنافذة ديسكتوب
 // ============================================================
 
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, screen } = require('electron');
 const path = require('path');
+
+let customerWindow = null;
+
+function openCustomerWindow() {
+  const displays = screen.getAllDisplays();
+  const externalDisplay = displays.find(d => d.bounds.x !== 0 || d.bounds.y !== 0) || (displays.length > 1 ? displays[1] : null);
+
+  if (customerWindow && !customerWindow.isDestroyed()) {
+    customerWindow.focus();
+    return;
+  }
+
+  customerWindow = new BrowserWindow({
+    x: externalDisplay ? externalDisplay.bounds.x : undefined,
+    y: externalDisplay ? externalDisplay.bounds.y : undefined,
+    width: externalDisplay ? externalDisplay.bounds.width : 1280,
+    height: externalDisplay ? externalDisplay.bounds.height : 720,
+    fullscreen: true,
+    autoHideMenuBar: true,
+    title: 'شاشة العميل التفاعلية',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false
+    }
+  });
+
+  customerWindow.loadFile(path.join(__dirname, '..', 'customer-display.html'));
+  customerWindow.on('closed', () => {
+    customerWindow = null;
+  });
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -27,6 +59,7 @@ function createWindow() {
     {
       label: 'النظام',
       submenu: [
+        { label: 'شاشة العميل (الشاشة الثانية)', accelerator: 'CmdOrCtrl+Shift+C', click: () => openCustomerWindow() },
         { label: 'إعادة تحميل (Reload)', accelerator: 'CmdOrCtrl+R', click: () => mainWindow.reload() },
         { label: 'ملء الشاشة (Fullscreen)', accelerator: 'F11', click: () => mainWindow.setFullScreen(!mainWindow.isFullScreen()) },
         { type: 'separator' },

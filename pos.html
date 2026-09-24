@@ -488,7 +488,7 @@ body {
   <div class="topbar-right">
     <button class="btn-top" id="adminAddDishBtn" style="background:#1c69d4;color:#fff;border-color:#1c69d4;display:none;" onclick="openAddDishModal()">+ إضافة وجبة / صنف</button>
     <button class="btn-top" onclick="navigate('tables.html')">خريطة الطاولات</button>
-    <button class="btn-top" onclick="openCustomerDisplayOnScreen2()" style="font-weight:700;background:#eff6ff;color:#1e40af;border-color:#bfdbfe;" title="فتح أو نقل شاشة العميل للشاشة رقم 2">🖥️ شاشة العميل (الشاشة 2)</button>
+    <button class="btn-top" onclick="openCustomerDisplayScreen()" title="فتح شاشة العميل التفاعلية في الشاشة الثانية بملء الشاشة تلقائياً بدون تدخل">🖥️ شاشة العميل (الشاشة الثانية)</button>
     <button class="btn-top" onclick="navigate('orders.html')">سجل الفواتير</button>
     <button class="btn-top" onclick="navigate('dashboard.html')">لوحة التحكم</button>
     <button class="btn-top danger" onclick="clearActiveOrder()">مسح الطلب</button>
@@ -569,12 +569,6 @@ body {
 
     <!-- ORDER FOOTER -->
     <div class="order-footer">
-      <!-- ORDER NOTE / COMMENT FIELD -->
-      <div style="margin-bottom:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:5px 8px;display:flex;align-items:center;gap:6px;">
-        <span style="font-size:11.5px;font-weight:800;color:var(--primary);white-space:nowrap;">📝 كومنت / ملاحظة:</span>
-        <input type="text" id="orderCommentInput" placeholder="أضف ملاحظة للطلب أو الـ Round (مثال: مستعجل، بدون سكر)..." oninput="handleOrderCommentChange()" style="flex:1;padding:4px 8px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:12px;background:#fff;" />
-      </div>
-
       <div class="discount-row">
         <label>خصم:</label>
         <input type="number" id="discountVal" class="disc-input" placeholder="0" min="0" oninput="calcTotals()" />
@@ -843,107 +837,13 @@ try {
   customerDisplayChannel = new BroadcastChannel('cs_order');
 } catch(e) {}
 
-let customerDisplayWindow = null;
-
-// نافذة شاشة العميل للشاشة رقم 2 مع الكشف التلقائي لموقع الشاشات
-window.openCustomerDisplayOnScreen2 = async function(manualClick = true) {
-  if (customerDisplayWindow && !customerDisplayWindow.closed) {
-    try {
-      customerDisplayWindow.focus();
-      if (manualClick) showToast('شاشة العميل مفتوحة ومحدثة بالفعل 🖥️');
-      return customerDisplayWindow;
-    } catch (e) {}
-  }
-
-  // 1. استخدام Window Management API لشاشات المتصفح الحديثة
-  if ('getScreenDetails' in window) {
-    try {
-      const details = await window.getScreenDetails();
-      const screens = details.screens;
-      // البحث عن الشاشة الثانوية (غير الرئيسية أو ذات إحداثي top سالب أعلى الشاشة 1 كما في جهاز المستخدم)
-      const secondary = screens.find(s => !s.isPrimary) || screens.find(s => s.availTop < 0) || screens[1];
-      if (secondary) {
-        customerDisplayWindow = window.open(
-          'customer-display.html',
-          'CustomerDisplayWindow',
-          `left=${secondary.availLeft},top=${secondary.availTop},width=${secondary.availWidth},height=${secondary.availHeight},menubar=no,toolbar=no,location=no,status=no,resizable=yes`
-        );
-        if (customerDisplayWindow) {
-          customerDisplayWindow.focus();
-          if (manualClick) showToast('تم فتح شاشة العميل على الشاشة رقم 2 بنجاح 🖥️');
-          return customerDisplayWindow;
-        }
-      }
-    } catch (err) {
-      console.warn('Window management screen details notice:', err);
-    }
-  }
-
-  // 2. المحاذاة الدقيقة وفق إعدادات Windows لجهاز Diebold Nixdorf (الشاشة 2 أعلى الشاشة 1):
-  const cfg = JSON.parse(localStorage.getItem('cs_configs') || '{}');
-  const pos = cfg.customerScreenPosition || 'top'; // 'top' | 'right' | 'left'
-  
-  let targetLeft = 0;
-  let targetTop = -(window.screen.height || 768); // أعلى الشاشة 1 (إحداثي Y سالب)
-  if (pos === 'right') {
-    targetLeft = window.screen.width || 1024;
-    targetTop = 0;
-  } else if (pos === 'left') {
-    targetLeft = -(window.screen.width || 1024);
-    targetTop = 0;
-  }
-
-  const w = window.screen.availWidth || 1024;
-  const h = window.screen.availHeight || 768;
-
-  customerDisplayWindow = window.open(
-    'customer-display.html',
-    'CustomerDisplayWindow',
-    `left=${targetLeft},top=${targetTop},width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no,resizable=yes`
-  );
-
-  if (customerDisplayWindow) {
-    customerDisplayWindow.focus();
-    if (manualClick) showToast('تم فتح شاشة العميل على الشاشة رقم 2 🖥️');
-  } else if (manualClick) {
-    showToast('يرجى السماح بالنوافذ المنبثقة (Popups) للموقع لفتح شاشة العميل');
-  }
-  return customerDisplayWindow;
-};
-
-// الفتح التلقائي لشاشة العميل على الشاشة 2 عند تشغيل الكاشير
-try {
-  const displayCfg = JSON.parse(localStorage.getItem('cs_configs') || '{}');
-  if (displayCfg.autoOpenCustomerDisplay !== false) {
-    setTimeout(() => {
-      window.openCustomerDisplayOnScreen2(false).catch(() => {});
-    }, 1500);
-
-    const autoOpenOnGesture = () => {
-      if (!customerDisplayWindow || customerDisplayWindow.closed) {
-        window.openCustomerDisplayOnScreen2(false).catch(() => {});
-      }
-      window.removeEventListener('click', autoOpenOnGesture);
-    };
-    window.addEventListener('click', autoOpenOnGesture, { once: true });
-  }
-} catch(e) {}
-
-window.handleOrderCommentChange = function() {
-  calcTotals();
-};
-
 function broadcastToCustomerDisplay(grandSubtotal, discount, total) {
-  const commentEl = document.getElementById('orderCommentInput');
-  const comment = commentEl ? commentEl.value.trim() : '';
-
   const payload = {
     type: 'order_update',
     items: order,
     subtotal: grandSubtotal,
     discount: discount,
     total: total,
-    comment: comment,
     timestamp: Date.now()
   };
 
@@ -956,7 +856,57 @@ function broadcastToCustomerDisplay(grandSubtotal, discount, total) {
       customerDisplayChannel.postMessage(payload);
     } catch(e) {}
   }
+
+  if (window.DataService?.socket) {
+    try {
+      window.DataService.socket.emit('cs:customer_display', payload);
+    } catch(e) {}
+  }
 }
+
+// دالة فتح شاشة العميل في الشاشة الثانية بملء الشاشة تلقائياً
+window.openCustomerDisplayScreen = async function() {
+  // بث حالة الطلب الحالي فوراً للشاشة
+  try {
+    const subtotal = order.reduce((s, it) => s + ((parseFloat(it.price) || 0) * (parseFloat(it.qty) || 1)), 0);
+    const disc = parseFloat(document.getElementById('discountInput')?.value) || 0;
+    const grand = Math.max(0, subtotal - disc);
+    broadcastToCustomerDisplay(subtotal, disc, grand);
+  } catch(e) {}
+
+  // 1. محاولة استخدام Window Management API للتعرف التلقائي على الشاشة الثانية (Chrome/Edge 100+)
+  if ('getScreenDetails' in window) {
+    try {
+      const screenDetails = await window.getScreenDetails();
+      const secondaryScreen = screenDetails.screens.find(s => !s.isPrimary) || (screenDetails.screens.length > 1 ? screenDetails.screens[1] : null);
+      if (secondaryScreen) {
+        const feat = `left=${secondaryScreen.availLeft},top=${secondaryScreen.availTop},width=${secondaryScreen.availWidth},height=${secondaryScreen.availHeight},fullscreen=yes,scrollbars=no,menubar=no,toolbar=no,location=no,status=no,resizable=yes`;
+        const win = window.open('customer-display.html?autofs=1', 'CustomerDisplayWindow', feat);
+        if (win) {
+          win.focus();
+          showToast('🖥️ تم فتح شاشة العميل في الشاشة الثانية بملء الشاشة تلقائياً');
+          return;
+        }
+      }
+    } catch (permErr) {
+      console.log('Multi-screen window placement check:', permErr);
+    }
+  }
+
+  // 2. المواءمة القياسية للشاشات المزدوجة (إزاحة النافذة يميناً بعرض الشاشة الرئيسية للشاشة الملحقة)
+  const screenWidth = window.screen.availWidth || 1920;
+  const screenHeight = window.screen.availHeight || 1080;
+  const feat = `left=${screenWidth},top=0,width=${screenWidth},height=${screenHeight},fullscreen=yes,scrollbars=no,menubar=no,toolbar=no,location=no,status=no,resizable=yes`;
+  const win = window.open('customer-display.html?autofs=1', 'CustomerDisplayWindow', feat);
+  if (win) {
+    win.focus();
+    try {
+      win.moveTo(screenWidth, 0);
+      win.resizeTo(screenWidth, screenHeight);
+    } catch(err) {}
+    showToast('🖥️ تم فتح شاشة العميل للشاشة الثانية بملء الشاشة تلقائياً');
+  }
+};
 
 // Enforce RBAC
 if (!AuthService.enforcePage('pos.html')) {
@@ -1545,10 +1495,7 @@ window.handleAddRoundToTable = function() {
       TableManager.openSession(selectedTable, 'عميل صالة', 'وليد صبحي صالة');
     }
 
-    const commentInput = document.getElementById('orderCommentInput');
-    const roundComment = commentInput ? commentInput.value.trim() : '';
-
-    const roundRes = TableManager.addRound(selectedTable, order, 'وليد صبحي صالة', roundComment);
+    const roundRes = TableManager.addRound(selectedTable, order, 'وليد صبحي صالة');
     // خصم مكونات الوجبات من المخزون
     deductRecipeStock(order);
 
@@ -1556,7 +1503,7 @@ window.handleAddRoundToTable = function() {
     const session = AuthService.getSession();
     const cashierName = session ? (session.fullName || session.name || session.username) : 'الكاشير';
 
-    // توجيه تلقائي: بون الطعام للمطبخ وبون المشروبات للبار (بدون أي أسعار إطلاقاً) مع طباعة الكومنت
+    // توجيه تلقائي: بون الطعام للمطبخ وبون المشروبات للبار (بدون أي أسعار إطلاقاً)
     const cats = DB.getCats();
     ThermalPrinter.routeAndPrintRoundTickets({
       order: {
@@ -1566,20 +1513,17 @@ window.handleAddRoundToTable = function() {
         tableNumber: t.number,
         waiter: t.currentSession?.waiter || 'وليد صبحي صالة',
         cashier: cashierName,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-        roundComment: roundComment
+        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
       },
       round: roundNum,
       items: [...order],
-      categories: cats,
-      roundComment: roundComment
+      categories: cats
     });
 
-    if (commentInput) commentInput.value = '';
     order = [];
     buildTableSelector();
     handleTableSelect(selectedTable);
-    showToast(`تم إرسال Round #${roundNum} وطباعة بون المطبخ وبون البار بنجاح 🖨️`);
+    showToast(`تم إرسال Round #${roundNum} وطباعة بون المطبخ وبون البار تلقائياً بدون أسعار بنجاح 🖨️`);
   } catch (err) {
     showToast('خطأ: ' + err.message);
   }
@@ -1647,12 +1591,9 @@ window.handleCheckoutAction = function() {
   if (orderType === 'dine' && selectedTable) {
     const t = TableManager.getTable(selectedTable);
     if (t && t.status === TABLE_STATUS.OCCUPIED) {
-      const commentInput = document.getElementById('orderCommentInput');
-      const orderComment = commentInput ? commentInput.value.trim() : '';
-
       // If there are newly drafted items in cart, save as final round first
       if (order.length > 0) {
-        const roundRes = TableManager.addRound(selectedTable, order, 'وليد صبحي صالة', orderComment);
+        const roundRes = TableManager.addRound(selectedTable, order, 'وليد صبحي صالة');
         deductRecipeStock(order);
         const roundNum = roundRes?.roundNumber || (t.currentSession?.rounds?.length || 1);
         const session = AuthService.getSession();
@@ -1665,13 +1606,11 @@ window.handleCheckoutAction = function() {
             tableNumber: t.number,
             waiter: t.currentSession?.waiter || 'وليد صبحي صالة',
             cashier: cashierName,
-            time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-            roundComment: orderComment
+            time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
           },
           round: roundNum,
           items: [...order],
-          categories: DB.getCats(),
-          roundComment: orderComment
+          categories: DB.getCats()
         });
         order = [];
       }
@@ -1679,17 +1618,6 @@ window.handleCheckoutAction = function() {
       const discVal = parseFloat(document.getElementById('discountVal').value) || 0;
       const discType = document.getElementById('discountType').value;
       const invoice = TableManager.checkoutTable(selectedTable, payMethod, discVal, discType);
-
-      if (orderComment) {
-        invoice.comment = orderComment;
-        const allOrders = DB.getOrders();
-        const invIdx = allOrders.findIndex(o => o.id == invoice.id);
-        if (invIdx !== -1) {
-          allOrders[invIdx].comment = orderComment;
-          DB.saveOrders(allOrders);
-        }
-      }
-      if (commentInput) commentInput.value = '';
       
       DB.logGuardEvent('إغلاق ودفع طاولة', `تم إغلاق ودفع حساب طاولة ${t.number} بإجمالي ${invoice.total} ج`, invoice.total);
       showReceipt(invoice);
@@ -1708,9 +1636,6 @@ window.handleCheckoutAction = function() {
 };
 
 function execStandardCheckout() {
-  const commentInput = document.getElementById('orderCommentInput');
-  const orderComment = commentInput ? commentInput.value.trim() : '';
-
   const subtotal = order.reduce((sum, o) => sum + (o.price * o.qty), 0);
   const discVal = parseFloat(document.getElementById('discountVal').value) || 0;
   const discType = document.getElementById('discountType').value;
@@ -1728,7 +1653,6 @@ function execStandardCheckout() {
     tableId: selectedTable,
     tableLabel: selectedTable ? ('طاولة ' + TableManager.getTable(selectedTable)?.number) : null,
     items: [...order],
-    comment: orderComment,
     subtotal, discount, total,
     payMethod,
     status: 'paid',
@@ -1741,8 +1665,6 @@ function execStandardCheckout() {
   orders.push(invoice);
   DB.saveOrders(orders);
   deductRecipeStock(order);
-
-  if (commentInput) commentInput.value = '';
 
   if (orderType === 'dine' && selectedTable) {
     TableManager.setCleaning(selectedTable);
@@ -1757,9 +1679,6 @@ function execStandardCheckout() {
 
 window.handleDeliverySubmit = function(e) {
   e.preventDefault();
-  const commentInput = document.getElementById('orderCommentInput');
-  const orderComment = commentInput ? commentInput.value.trim() : '';
-
   const name = document.getElementById('delCustomerName').value.trim();
   const phone = document.getElementById('delCustomerPhone').value.trim();
   const address = document.getElementById('delAddress').value.trim();
@@ -1785,7 +1704,6 @@ window.handleDeliverySubmit = function(e) {
     dCapName: rider,
     dStatus: 'pending',
     items: [...order],
-    comment: orderComment,
     subtotal, discount, total,
     payMethod,
     status: 'paid',
@@ -1798,7 +1716,6 @@ window.handleDeliverySubmit = function(e) {
   orders.push(invoice);
   DB.saveOrders(orders);
   deductRecipeStock(order);
-  if (commentInput) commentInput.value = '';
   closeModal('deliveryDetailsModal');
   showReceipt(invoice);
 };
@@ -1870,11 +1787,6 @@ function showReceipt(inv) {
       </div>
     `).join('')}
     ${roundsHtml}
-    ${inv.comment ? `
-      <div style="background:#fef3c7;border:1px dashed #d97706;padding:4px 8px;border-radius:4px;margin:6px 0;font-size:11.5px;color:#92400e;text-align:right;">
-        <strong>📝 ملاحظات:</strong> ${inv.comment}
-      </div>
-    ` : ''}
     <hr style="border:none;border-top:1px dashed var(--border-strong);margin:6px 0;" />
     <div class="r-row"><span>المجموع:</span><span>${(inv.subtotal||0).toLocaleString('ar-EG')} ج</span></div>
     ${inv.discount > 0 ? `<div class="r-row"><span>خصم:</span><span>- ${(inv.discount).toLocaleString('ar-EG')} ج</span></div>` : ''}
@@ -1911,8 +1823,6 @@ window.finishAndResetOrder = function() {
   order = [];
   selectedTable = null;
   activeReceiptInvoice = null;
-  const commentInput = document.getElementById('orderCommentInput');
-  if (commentInput) commentInput.value = '';
   document.getElementById('discountVal').value = '';
   document.getElementById('tableSelector').value = '';
   hideTableSessionBanner();

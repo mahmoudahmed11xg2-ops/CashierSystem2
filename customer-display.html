@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>نظام الكاشير — شاشة العميل التفاعلية</title>
+<title>نظام الكاشير — شاشة العميل</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -17,256 +17,646 @@
   --primary-hover: #1555ab;
   --green:     #16a34a;
   --red:       #dc2626;
+  --orange:    #ea580c;
   --text:      #1e293b;
   --text-muted:#64748b;
   --radius:    4px;
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-body {
+html, body {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
   font-family: 'Cairo', 'Inter', sans-serif;
   background: var(--bg);
   color: var(--text);
-  height: 100vh;
-  overflow: hidden;
-  display: flex;
-}
-
-/* LEFT: BRAND & PROMOTIONS */
-.brand-side {
-  flex: 1.2;
-  background: var(--surface);
-  border-left: 1px solid var(--border);
+  user-select: none;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 48px;
-  position: relative;
-}
-.brand-badge-large {
-  width: 64px; height: 64px;
-  background: var(--primary);
-  border-radius: var(--radius);
-  color: #ffffff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 24px; font-weight: 900; margin-bottom: 24px;
-}
-.brand-heading {
-  font-size: 32px;
-  font-weight: 800;
-  color: var(--text);
-  margin-bottom: 12px;
-}
-.brand-heading span { color: var(--primary); }
-.brand-subheading {
-  font-size: 16px;
-  color: var(--text-muted);
-  text-align: center;
-  max-width: 520px;
-  line-height: 1.7;
 }
 
-.notice-card {
-  margin-top: 48px;
+/* TOPBAR — نفس نمط النظام تماماً */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  z-index: 50;
+}
+
+.topbar-right-side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-badge {
+  width: 36px;
+  height: 36px;
+  background: var(--primary);
+  border-radius: var(--radius);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.store-name-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.store-name-title span {
+  color: var(--primary);
+}
+
+.topbar-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+}
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green);
+  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid rgba(22, 163, 74, 0.25);
+  padding: 3px 10px;
+  border-radius: var(--radius);
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--green);
+}
+
+.topbar-left-side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.clock-text {
+  font-family: 'Inter', 'Cairo', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+  direction: ltr;
+}
+
+/* MAIN LAYOUT — شاشة مقسومة بنمط النظام */
+.display-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 480px;
+  overflow: hidden;
+  height: calc(100vh - 56px);
+  background: var(--bg);
+}
+
+@media (min-width: 1440px) {
+  .display-body {
+    grid-template-columns: 1fr 540px;
+  }
+}
+
+@media (min-width: 1900px) {
+  .display-body {
+    grid-template-columns: 1fr 640px;
+  }
+}
+
+/* LEFT SIDE: WELCOME & NOTICES (نفس تصميم لوحة التحكم والنظام) */
+.welcome-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  padding: 36px 40px;
+  overflow-y: auto;
+}
+
+.welcome-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin: auto 0;
+  max-width: 580px;
+  align-self: center;
   width: 100%;
-  max-width: 480px;
+}
+
+.welcome-logo-large {
+  width: 72px;
+  height: 72px;
+  background: var(--primary);
+  border-radius: var(--radius);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(28, 105, 212, 0.2);
+}
+
+.welcome-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.welcome-title span {
+  color: var(--primary);
+}
+
+.welcome-subtitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.8;
+  margin-bottom: 28px;
+}
+
+.banner-card {
+  width: 100%;
   background: #ffffff;
   border: 1px solid var(--border);
+  border-right: 4px solid var(--primary);
   border-radius: var(--radius);
-  padding: 24px;
-  transition: opacity 0.3s ease;
+  padding: 20px 24px;
+  text-align: right;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
 }
-.notice-tag {
+
+.banner-tag {
   display: inline-block;
   font-size: 11px;
   font-weight: 800;
-  text-transform: uppercase;
   color: var(--primary);
   background: rgba(28, 105, 212, 0.08);
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-radius: var(--radius);
   margin-bottom: 8px;
 }
-.notice-title {
-  font-size: 18px;
+
+.banner-title {
+  font-size: 17px;
   font-weight: 800;
   color: var(--text);
   margin-bottom: 6px;
 }
-.notice-desc {
+
+.banner-desc {
   font-size: 13px;
   color: var(--text-muted);
   line-height: 1.6;
 }
 
-/* RIGHT: ORDER STREAM */
-.order-side {
-  width: 500px;
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-.order-header {
-  padding: 24px 28px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.order-title { font-size: 18px; font-weight: 800; color: var(--text); }
-.order-badge {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  padding: 4px 10px;
-  border-radius: var(--radius);
+.welcome-foot {
+  text-align: center;
   font-size: 12px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--text-muted);
 }
 
-.order-items {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 28px;
+/* RIGHT SIDE: CURRENT ORDER (نفس عمود الطلب في pos.html بالضبط) */
+.order-col {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  overflow: hidden;
+  height: 100%;
 }
-.order-item-row {
+
+.order-col-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--surface2);
+  flex-shrink: 0;
 }
-.order-item-row:last-child { border-bottom: none; }
-.order-item-info { flex: 1; margin-left: 16px; }
-.order-item-name { font-size: 14px; font-weight: 700; color: var(--text); }
-.order-item-note { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-.order-item-qty {
-  font-size: 13px; font-weight: 700;
-  background: var(--surface2); border: 1px solid var(--border);
-  padding: 2px 8px; border-radius: var(--radius);
-  margin-left: 16px; color: var(--text);
-}
-.order-item-price { font-size: 15px; font-weight: 800; color: var(--text); }
 
-.empty-state {
+.order-col-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-count-pill {
+  font-size: 12px;
+  font-weight: 800;
+  background: rgba(28, 105, 212, 0.08);
+  color: var(--primary);
+  border: 1px solid rgba(28, 105, 212, 0.2);
+  padding: 2px 10px;
+  border-radius: var(--radius);
+}
+
+/* LIST OF ORDER ITEMS — مطابق تماماً لتصميم الـ Cart في pos.html */
+.order-items-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 18px;
+  background: #ffffff;
+}
+
+.order-items-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+.order-items-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 2px;
+}
+
+.order-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  animation: fadeInRow 0.2s ease;
+}
+
+@keyframes fadeInRow {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.item-main-info {
+  flex: 1;
+  margin-left: 12px;
+}
+
+.item-title-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.item-note-text {
+  font-size: 11.5px;
+  color: var(--orange);
+  margin-top: 3px;
+  font-weight: 600;
+}
+
+.item-qty-tag {
+  font-size: 13px;
+  font-weight: 800;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  padding: 3px 10px;
+  border-radius: var(--radius);
+  margin-left: 14px;
+}
+
+.item-price-tag {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--primary);
+  width: 85px;
+  text-align: left;
+  direction: ltr;
+}
+
+/* EMPTY STATE — نفس أسلوب النظام */
+.empty-box {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
   color: var(--text-muted);
-  font-size: 14px;
-  font-weight: 700;
+  text-align: center;
+  padding: 30px;
 }
 
-.order-totals {
-  padding: 24px 28px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+.empty-icon {
+  font-size: 46px;
+  margin-bottom: 12px;
+  opacity: 0.6;
 }
-.total-line {
+
+.empty-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.empty-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 280px;
+  line-height: 1.6;
+}
+
+/* ORDER TOTALS FOOTER — مطابق للـ order-footer في pos.html */
+.order-footer-box {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 16px 20px;
+  flex-shrink: 0;
+}
+
+.summary-line {
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-muted);
-  margin-bottom: 8px;
+  padding: 3px 0;
 }
-.total-line.discount { color: var(--red); font-weight: 700; }
-.total-line.grand {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
-  margin-top: 12px;
-  font-size: 20px;
-  font-weight: 900;
+
+.summary-line .val {
+  font-weight: 700;
   color: var(--text);
+  direction: ltr;
 }
-.total-line.grand .val { color: var(--primary); }
+
+.summary-line.discount {
+  color: var(--red);
+}
+
+.summary-line.discount .val {
+  color: var(--red);
+}
+
+.summary-line.grand {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+.summary-line.grand .val {
+  color: var(--primary);
+  font-size: 22px;
+  font-weight: 900;
+}
 </style>
 </head>
 <body>
 
-<div class="brand-side">
-  <button id="fsBtn" onclick="toggleFullscreen()" style="position:absolute;top:16px;left:16px;background:#ffffff;border:1px solid var(--border-strong);padding:6px 12px;border-radius:var(--radius);font-size:12px;font-weight:700;cursor:pointer;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.1);">⛶ ملء الشاشة (F11)</button>
-  <div class="brand-badge-large" id="brandLogoText">CS</div>
-  <h1 class="brand-heading" id="brandHeaderTitle">أهلاً بك في <span>Cashier System</span></h1>
-  <p class="brand-subheading" id="brandHeaderSubtitle">نسعد بتقديم أشهى الوجبات والمشروبات المحضرة بأعلى معايير الجودة والضيافة الراقية.</p>
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-right-side">
+    <div class="brand-badge" id="brandLogoBadge">CS</div>
+    <div class="store-name-title" id="storeTitleContainer">
+      <span id="storeNamePrimary">نظام الكاشير</span> — شاشة العميل
+    </div>
+    <div class="topbar-sep"></div>
+    <div class="live-badge">
+      <span class="live-dot"></span>
+      <span id="connStatusText">متصل ومباشر</span>
+    </div>
+  </div>
 
-  <div class="notice-card" id="noticeCard">
-    <span class="notice-tag" id="noticeTag">عرض اليوم</span>
-    <div class="notice-title" id="noticeTitle">وجبات ومجموعات التوفير العائلية</div>
-    <div class="notice-desc" id="noticeDesc">استمتع بخصومات مميزة على وجبات المشاركة العائلية مع تشكيلة المقبلات والمشروبات الطازجة.</div>
+  <div class="topbar-left-side">
+    <div class="clock-text" id="liveClock">00:00:00</div>
   </div>
 </div>
 
-<div class="order-side">
-  <div class="order-header">
-    <span class="order-title">مراجعة الطلب الحالي</span>
-    <span class="order-badge" id="itemCount">0 أصناف</span>
-  </div>
+<!-- DISPLAY BODY -->
+<div class="display-body">
 
-  <div id="orderCommentBox" style="display:none;margin:12px 28px 0;background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:8px 12px;font-size:12px;color:#1e40af;">
-    <strong style="margin-left:4px;">📝 ملاحظة الطلب:</strong>
-    <span id="orderCommentDisplay"></span>
-  </div>
+  <!-- LEFT: WELCOME & STORE DETAILS -->
+  <div class="welcome-col">
+    <div class="welcome-box">
+      <div class="welcome-logo-large" id="welcomeLogoLarge">CS</div>
+      <div class="welcome-title">أهلاً بك في <span id="brandWelcomeName">نظام الكاشير</span></div>
+      <div class="welcome-subtitle" id="welcomeSub">نسعد بخدمتكم وتقديم أفضل الوجبات والمشروبات المحضرة بأعلى معايير الجودة والضيافة.</div>
 
-  <div class="order-items" id="itemsContainer">
-    <div class="empty-state">في انتظار تسجيل الأصناف من الكاشير...</div>
-  </div>
-
-  <div class="order-totals">
-    <div class="total-line">
-      <span>المجموع الفرعي:</span>
-      <span id="subTotalVal">0 ج</span>
+      <div class="banner-card" id="bannerCard">
+        <span class="banner-tag" id="bannerTag">عرض اليوم</span>
+        <div class="banner-title" id="bannerTitle">مجموعات ووجبات التوفير العائلية</div>
+        <div class="banner-desc" id="bannerDesc">استمتع بأشهى الوجبات مع تشكيلة المقبلات والمشروبات الطازجة بأسعار خاصة.</div>
+      </div>
     </div>
-    <div class="total-line discount">
-      <span>قيمة الخصم:</span>
-      <span id="discountVal">0 ج</span>
-    </div>
-    <div class="total-line grand">
-      <span>المبلغ الإجمالي المستحق:</span>
-      <span class="val" id="grandTotalVal">0 ج</span>
+
+    <div class="welcome-foot">
+      <span>✨ شكراً لاختياركم لنا ونتمنى لكم تجربة مميزة!</span>
     </div>
   </div>
+
+  <!-- RIGHT: ORDER LIST & TOTALS -->
+  <div class="order-col">
+    <div class="order-col-header">
+      <div class="order-col-title">
+        <span>📋 تفاصيل الطلب</span>
+      </div>
+      <span class="order-count-pill" id="itemCountBadge">0 أصناف</span>
+    </div>
+
+    <div class="order-items-scroll" id="orderItemsContainer">
+      <div class="empty-box">
+        <div class="empty-icon">🛒</div>
+        <div class="empty-title">في انتظار تسجيل الطلب</div>
+        <div class="empty-desc">سيظهر طلبك وأسعار الأصناف هنا مباشرة فور قيام الكاشير بإضافتها.</div>
+      </div>
+    </div>
+
+    <div class="order-footer-box">
+      <div class="summary-line">
+        <span>المجموع الفرعي:</span>
+        <span class="val" id="subTotalVal">0.00 ج</span>
+      </div>
+      <div class="summary-line discount">
+        <span>الخصم:</span>
+        <span class="val" id="discountVal">0.00 ج</span>
+      </div>
+      <div class="summary-line grand">
+        <span>الإجمالي المستحق:</span>
+        <span class="val" id="grandTotalVal">0.00 ج</span>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
-window.toggleFullscreen = function() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(err => {
-      console.warn('Fullscreen request failed:', err);
-    });
-    const fsBtn = document.getElementById('fsBtn');
-    if (fsBtn) fsBtn.textContent = '⛶ تصغير الشاشة';
-  } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    }
-    const fsBtn = document.getElementById('fsBtn');
-    if (fsBtn) fsBtn.textContent = '⛶ ملء الشاشة (F11)';
-  }
-};
+// ============================================================
+// 1. ملء الشاشة التلقائي الصامت فور الفتح بدون أي أزرار أو تدخل
+// ============================================================
+function triggerSilentFullscreen() {
+  if (document.fullscreenElement || document.webkitFullscreenElement) return;
 
-// Double-click anywhere on brand side to toggle fullscreen
-document.querySelector('.brand-side')?.addEventListener('dblclick', () => {
-  window.toggleFullscreen();
+  const docEl = document.documentElement;
+  const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+
+  if (req) {
+    try {
+      const p = req.call(docEl);
+      if (p && typeof p.catch === 'function') {
+        p.catch(() => {});
+      }
+    } catch(e) {}
+  }
+}
+
+// محاولات تلقائية فورية متتابعة بمجرد التشغيل
+triggerSilentFullscreen();
+window.addEventListener('load', triggerSilentFullscreen);
+document.addEventListener('DOMContentLoaded', triggerSilentFullscreen);
+window.addEventListener('focus', triggerSilentFullscreen);
+setTimeout(triggerSilentFullscreen, 50);
+setTimeout(triggerSilentFullscreen, 200);
+setTimeout(triggerSilentFullscreen, 600);
+setTimeout(triggerSilentFullscreen, 1200);
+
+// تفعيل تلقائي صامت عند أي تفاعل طبيعي
+const silentFsOnAnyInteraction = () => {
+  triggerSilentFullscreen();
+};
+window.addEventListener('pointerdown', silentFsOnAnyInteraction, { passive: true });
+window.addEventListener('click', silentFsOnAnyInteraction, { passive: true });
+window.addEventListener('touchstart', silentFsOnAnyInteraction, { passive: true });
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'F11') {
+    e.preventDefault();
+    if (!document.fullscreenElement) triggerSilentFullscreen();
+    else document.exitFullscreen?.().catch(() => {});
+  } else {
+    triggerSilentFullscreen();
+  }
 });
 
-// Load Store Branding
-try {
-  const storeCfg = JSON.parse(localStorage.getItem('cs_configs') || '{}');
-  if (storeCfg.storeName) {
-    const titleEl = document.getElementById('brandHeaderTitle');
-    if (titleEl) titleEl.innerHTML = `أهلاً بك في <span>${storeCfg.storeName}</span>`;
+// ============================================================
+// 2. تحديث الساعة وبيانات المحل
+// ============================================================
+function updateClock() {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('ar-EG', { hour12: true });
+  const clockEl = document.getElementById('liveClock');
+  if (clockEl) clockEl.textContent = timeStr;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function loadStoreBranding() {
+  try {
+    const raw = localStorage.getItem('cs_configs');
+    if (raw) {
+      const cfg = JSON.parse(raw);
+      if (cfg.storeName) {
+        document.getElementById('storeNamePrimary').textContent = cfg.storeName;
+        document.getElementById('brandWelcomeName').textContent = cfg.storeName;
+        const words = cfg.storeName.trim().split(/\s+/);
+        const initials = words.length > 1 ? (words[0][0] + words[1][0]) : cfg.storeName.slice(0, 2);
+        const logoLetters = initials.toUpperCase();
+        document.getElementById('brandLogoBadge').textContent = logoLetters;
+        document.getElementById('welcomeLogoLarge').textContent = logoLetters;
+      }
+    }
+  } catch(e) {}
+}
+loadStoreBranding();
+
+// ============================================================
+// 3. التزامن الفوري مع الكاشير (BroadcastChannel + LocalStorage + Socket.io)
+// ============================================================
+function updateOrderUI(data) {
+  const items = data.items || [];
+  const container = document.getElementById('orderItemsContainer');
+  const countBadge = document.getElementById('itemCountBadge');
+  const subTotalEl = document.getElementById('subTotalVal');
+  const discountEl = document.getElementById('discountVal');
+  const grandTotalEl = document.getElementById('grandTotalVal');
+
+  const totalCount = items.reduce((sum, it) => sum + (parseFloat(it.qty) || 1), 0);
+  countBadge.textContent = `${totalCount} ${totalCount === 1 ? 'صنف' : 'أصناف'}`;
+
+  const sub = parseFloat(data.subtotal) || 0;
+  const disc = parseFloat(data.discount) || 0;
+  const tot = parseFloat(data.total) || 0;
+
+  subTotalEl.textContent = `${sub.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج`;
+  discountEl.textContent = disc > 0 ? `- ${disc.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج` : '0.00 ج';
+  grandTotalEl.textContent = `${tot.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج`;
+
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="empty-box">
+        <div class="empty-icon">🛒</div>
+        <div class="empty-title">في انتظار تسجيل الطلب</div>
+        <div class="empty-desc">سيظهر طلبك وأسعار الأصناف هنا مباشرة فور قيام الكاشير بإضافتها.</div>
+      </div>
+    `;
+    return;
   }
-  if (storeCfg.receiptHeaderSubtitle) {
-    const subEl = document.getElementById('brandHeaderSubtitle');
-    if (subEl) subEl.textContent = storeCfg.receiptHeaderSubtitle;
+
+  container.innerHTML = items.map(item => {
+    const qty = parseFloat(item.qty) || 1;
+    const price = parseFloat(item.price) || 0;
+    const lineTotal = qty * price;
+    return `
+      <div class="order-item-card">
+        <div class="item-main-info">
+          <div class="item-title-text">${item.name}</div>
+          ${item.note ? `<div class="item-note-text">ملاحظة: ${item.note}</div>` : ''}
+        </div>
+        <span class="item-qty-tag">× ${qty}</span>
+        <span class="item-price-tag">${lineTotal.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// قراءة الحالة الابتدائية
+try {
+  const initData = JSON.parse(localStorage.getItem('cs_customer_display_payload') || 'null');
+  if (initData && initData.type === 'order_update') {
+    updateOrderUI(initData);
   }
 } catch(e) {}
 
+// قناة البث الفوري المباشر
 let bc = null;
 try {
   bc = new BroadcastChannel('cs_order');
@@ -275,11 +665,9 @@ try {
       updateOrderUI(e.data);
     }
   };
-} catch(err) {
-  console.warn('BroadcastChannel not supported');
-}
+} catch(err) {}
 
-// استماع إضافي عبر localStorage لضمان التزامن حتى في حال عدم دعم BroadcastChannel
+// التزامن عبر التخزين المشترك
 window.addEventListener('storage', (e) => {
   if (e.key === 'cs_customer_display_payload') {
     try {
@@ -288,77 +676,56 @@ window.addEventListener('storage', (e) => {
         updateOrderUI(data);
       }
     } catch(err) {}
+  } else if (e.key === 'cs_configs') {
+    loadStoreBranding();
   }
 });
 
-// قراءة الحالة الحالية عند فتح الشاشة
+// Socket.io إذا كان متاحاً
 try {
-  const initData = JSON.parse(localStorage.getItem('cs_customer_display_payload') || 'null');
-  if (initData && initData.type === 'order_update') {
-    updateOrderUI(initData);
-  }
+  const script = document.createElement('script');
+  script.src = '/socket.io/socket.io.js';
+  script.onload = () => {
+    if (typeof io !== 'undefined') {
+      const socket = io();
+      socket.on('cs:customer_display', (data) => {
+        if (data && data.type === 'order_update') {
+          updateOrderUI(data);
+        }
+      });
+      socket.on('connect', () => {
+        document.getElementById('connStatusText').textContent = 'متصل ومباشر';
+      });
+      socket.on('disconnect', () => {
+        document.getElementById('connStatusText').textContent = 'غير متصل';
+      });
+    }
+  };
+  document.head.appendChild(script);
 } catch(e) {}
 
-function updateOrderUI(data) {
-  const items = data.items || [];
-  const container = document.getElementById('itemsContainer');
-  const countEl = document.getElementById('itemCount');
-  const subTotalEl = document.getElementById('subTotalVal');
-  const discountEl = document.getElementById('discountVal');
-  const grandTotalEl = document.getElementById('grandTotalVal');
-  const commentBox = document.getElementById('orderCommentBox');
-  const commentDisplay = document.getElementById('orderCommentDisplay');
-
-  countEl.textContent = `${items.length} أصناف`;
-  subTotalEl.textContent = `${(data.subtotal || 0).toLocaleString('ar-EG')} ج`;
-  discountEl.textContent = data.discount > 0 ? `- ${(data.discount).toLocaleString('ar-EG')} ج` : '0 ج';
-  grandTotalEl.textContent = `${(data.total || 0).toLocaleString('ar-EG')} ج`;
-
-  // Comment display
-  const commentText = data.comment || data.orderComment || '';
-  if (commentText && commentBox && commentDisplay) {
-    commentDisplay.textContent = commentText;
-    commentBox.style.display = 'block';
-  } else if (commentBox) {
-    commentBox.style.display = 'none';
-  }
-
-  if (items.length === 0) {
-    container.innerHTML = `<div class="empty-state">في انتظار تسجيل الأصناف من الكاشير...</div>`;
-    return;
-  }
-
-  container.innerHTML = items.map(item => `
-    <div class="order-item-row">
-      <div class="order-item-info">
-        <div class="order-item-name">${item.name}</div>
-        ${item.note ? `<div class="order-item-note">ملاحظة: ${item.note}</div>` : ''}
-      </div>
-      <span class="order-item-qty">× ${item.qty}</span>
-      <span class="order-item-price">${((item.price || 0) * (item.qty || 1)).toLocaleString('ar-EG')} ج</span>
-    </div>
-  `).join('');
-}
-
-// Announcements Carousel
-const NOTICES = [
-  { tag: 'عرض اليوم', title: 'وجبات ومجموعات التوفير العائلية', desc: 'استمتع بخصومات مميزة على وجبات المشاركة العائلية مع تشكيلة المقبلات والمشروبات الطازجة.' },
-  { tag: 'خدمة العملاء', title: 'خدمة التوصيل السريع للمنازل', desc: 'نصلك أينما كنت بأعلى سرعة وأفضل جودة تغليف للحفاظ على سخونة الوجبات.' },
-  { tag: 'جودة وطزاجة', title: 'مكونات طبيعية 100% يوميًا', desc: 'نختار أجود أنواع اللحوم والخضروات الطازجة المحضرة يوميًا في مطابخنا.' }
+// التبديل الدوري للإعلانات
+const BANNERS = [
+  { tag: 'عرض اليوم', title: 'مجموعات ووجبات التوفير العائلية', desc: 'استمتع بأشهى الوجبات مع تشكيلة المقبلات والمشروبات الطازجة بأسعار خاصة.' },
+  { tag: 'خدمة التوصيل', title: 'توصيل سريع وساخن إلى باب منزلك', desc: 'نصلك أينما كنت بأعلى سرعة وأفضل جودة تغليف للحفاظ على سخونة وطزاجة الوجبات.' },
+  { tag: 'جودة 100%', title: 'مكونات طازجة يومياً بأعلى المعايير', desc: 'نختار أجود أنواع اللحوم والخضروات الطازجة المحضرة يومياً بكل حب وإتقان.' },
+  { tag: 'طرق الدفع', title: 'دفع سهل بكافة الطرق نقدياً وإلكترونياً', desc: 'نقبل الكاش، وبطاقات الدفع الإلكتروني (فيزا / ماستركارد)، والمحافظ الذكية.' }
 ];
 
-let nIdx = 0;
+let bIdx = 0;
 setInterval(() => {
-  nIdx = (nIdx + 1) % NOTICES.length;
-  const item = NOTICES[nIdx];
-  const card = document.getElementById('noticeCard');
-  card.style.opacity = 0;
-  setTimeout(() => {
-    document.getElementById('noticeTag').textContent = item.tag;
-    document.getElementById('noticeTitle').textContent = item.title;
-    document.getElementById('noticeDesc').textContent = item.desc;
-    card.style.opacity = 1;
-  }, 300);
+  bIdx = (bIdx + 1) % BANNERS.length;
+  const item = BANNERS[bIdx];
+  const card = document.getElementById('bannerCard');
+  if (card) {
+    card.style.opacity = 0;
+    setTimeout(() => {
+      document.getElementById('bannerTag').textContent = item.tag;
+      document.getElementById('bannerTitle').textContent = item.title;
+      document.getElementById('bannerDesc').textContent = item.desc;
+      card.style.opacity = 1;
+    }, 250);
+  }
 }, 6000);
 </script>
 

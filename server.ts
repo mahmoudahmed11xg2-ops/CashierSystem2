@@ -128,180 +128,6 @@ async function startServer() {
     }
   });
 
-  // -------------------------------------------------------------
-  // Backup Vault (Local Backup Store Without External Syncing)
-  // -------------------------------------------------------------
-  const BACKUP_DIR = path.join(__dirname, 'data', 'backups');
-  if (!fs.existsSync(BACKUP_DIR)) {
-    try {
-      fs.mkdirSync(BACKUP_DIR, { recursive: true });
-    } catch (e) {
-      console.warn('Could not create backups directory:', e);
-    }
-  }
-
-  // Helper to create a snapshot object
-  function createSnapshotObject(note = 'نسخة احتياطية محلية') {
-    const backupData: Record<string, any> = {};
-    for (const key of Object.keys(DOMAIN_FILES)) {
-      backupData[key] = readDomainFile(key);
-    }
-    const now = new Date();
-    return {
-      meta: {
-        createdAt: now.toISOString(),
-        timestamp: now.getTime(),
-        note: note || 'نسخة احتياطية محلية من النظام',
-        domainsCount: Object.keys(backupData).length,
-        version: '2.0.0'
-      },
-      data: backupData
-    };
-  }
-
-  // Create initial backup if none exists
-  try {
-    const existing = fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith('.json'));
-    if (existing.length === 0) {
-      const initialSnapshot = createSnapshotObject('نسخة احتياطية أولية عند بدء النظام');
-      const filename = `backup_initial_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.json`;
-      fs.writeFileSync(path.join(BACKUP_DIR, filename), JSON.stringify(initialSnapshot, null, 2), 'utf-8');
-      console.log(`[Backup Vault] Initial local backup snapshot created: ${filename}`);
-    }
-  } catch (e) {}
-
-  // List Backups in Vault
-  app.get('/api/backup-vault/list', (req, res) => {
-    try {
-      if (!fs.existsSync(BACKUP_DIR)) {
-        fs.mkdirSync(BACKUP_DIR, { recursive: true });
-      }
-      const files = fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith('.json'));
-      const list = files.map(file => {
-        const fullPath = path.join(BACKUP_DIR, file);
-        const stats = fs.statSync(fullPath);
-        let note = 'نسخة احتياطية';
-        let domainsCount = Object.keys(DOMAIN_FILES).length;
-        let createdAt = stats.mtime.toISOString();
-        try {
-          const content = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
-          if (content.meta) {
-            note = content.meta.note || note;
-            domainsCount = content.meta.domainsCount || domainsCount;
-            createdAt = content.meta.createdAt || createdAt;
-          }
-        } catch (err) {}
-
-        return {
-          filename: file,
-          createdAt,
-          sizeBytes: stats.size,
-          sizeKB: (stats.size / 1024).toFixed(1),
-          note,
-          domainsCount
-        };
-      });
-
-      // Sort newest first
-      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      res.json({ ok: true, path: 'data/backups/', backups: list });
-    } catch (err: any) {
-      res.status(500).json({ ok: false, error: err.message });
-    }
-  });
-
-  // Create New Backup in Vault
-  app.post('/api/backup-vault/create', (req, res) => {
-    try {
-      const { note } = req.body || {};
-      const snapshot = createSnapshotObject(note || 'نسخة احتياطية يدوية');
-      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const filename = `backup_${ts}.json`;
-      const fullPath = path.join(BACKUP_DIR, filename);
-
-      fs.writeFileSync(fullPath, JSON.stringify(snapshot, null, 2), 'utf-8');
-      const stats = fs.statSync(fullPath);
-
-      res.json({
-        ok: true,
-        message: 'تم حفظ النسخة الاحتياطية في المخزن بنجاح',
-        backup: {
-          filename,
-          createdAt: snapshot.meta.createdAt,
-          sizeKB: (stats.size / 1024).toFixed(1),
-          note: snapshot.meta.note,
-          domainsCount: snapshot.meta.domainsCount
-        }
-      });
-    } catch (err: any) {
-      res.status(500).json({ ok: false, error: err.message });
-    }
-  });
-
-  // Restore from Vault
-  app.post('/api/backup-vault/restore', (req, res) => {
-    try {
-      const { filename } = req.body || {};
-      if (!filename) return res.status(400).json({ ok: false, error: 'اسم الملف مطلوب' });
-
-      // Prevent directory traversal
-      const safeFilename = path.basename(filename);
-      const fullPath = path.join(BACKUP_DIR, safeFilename);
-
-      if (!fs.existsSync(fullPath)) {
-        return res.status(404).json({ ok: false, error: 'ملف النسخة الاحتياطية غير موجود' });
-      }
-
-      const content = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
-      const dataToRestore = content.data || content;
-
-      let restoredCount = 0;
-      for (const [key, value] of Object.entries(dataToRestore)) {
-        if (DOMAIN_FILES[key]) {
-          writeDomainFile(key, value);
-          restoredCount++;
-        }
-      }
-
-      io.emit('cs:reload');
-      res.json({
-        ok: true,
-        message: `تم استرجاع النسخة الاحتياطية بنجاح (${restoredCount} قطاع بيانات)`,
-        restoredCount
-      });
-    } catch (err: any) {
-      res.status(500).json({ ok: false, error: err.message });
-    }
-  });
-
-  // Download backup from Vault
-  app.get('/api/backup-vault/download/:filename', (req, res) => {
-    try {
-      const safeFilename = path.basename(req.params.filename);
-      const fullPath = path.join(BACKUP_DIR, safeFilename);
-      if (!fs.existsSync(fullPath)) {
-        return res.status(404).json({ ok: false, error: 'ملف النسخة الاحتياطية غير موجود' });
-      }
-      res.download(fullPath, safeFilename);
-    } catch (err: any) {
-      res.status(500).json({ ok: false, error: err.message });
-    }
-  });
-
-  // Delete backup from Vault
-  app.delete('/api/backup-vault/:filename', (req, res) => {
-    try {
-      const safeFilename = path.basename(req.params.filename);
-      const fullPath = path.join(BACKUP_DIR, safeFilename);
-      if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
-      }
-      res.json({ ok: true, message: 'تم حذف النسخة الاحتياطية من المخزن بنجاح' });
-    } catch (err: any) {
-      res.status(500).json({ ok: false, error: err.message });
-    }
-  });
-
   // Backup Export
   app.get('/api/backup/export', (req, res) => {
     const backup: Record<string, any> = {};
@@ -331,56 +157,101 @@ async function startServer() {
   });
 
   // -------------------------------------------------------------
-  // Telegram Bot Shift Report Relay Endpoint
+  // Telegram Bot Shift Report Relay Endpoint (Supports Multiple Chat IDs)
   // -------------------------------------------------------------
   app.post('/api/telegram/send-shift-report', async (req, res) => {
     try {
-      const { token, chatId, caption, fileName, fileBase64 } = req.body || {};
+      const { token, chatId, chatIds, caption, fileName, fileBase64 } = req.body || {};
       const storeConfig = readDomainFile('storeConfig') || {};
       const botToken = token || storeConfig.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN || '8864429923:AAFUW-7EV7xkxR0jFIizs9Oc4hPUnG8HeEs';
-      const targetChatId = chatId || storeConfig.telegramChatId || process.env.TELEGRAM_CHAT_ID || '1724117996';
+      
+      // Parse list of chat IDs from body, storeConfig, or env
+      let rawChatIds = chatIds || chatId || storeConfig.telegramChatIds || storeConfig.telegramChatId || process.env.TELEGRAM_CHAT_ID || '1724117996';
+      let idList: string[] = [];
+      if (Array.isArray(rawChatIds)) {
+        idList = rawChatIds.map(x => String(x).trim()).filter(Boolean);
+      } else if (typeof rawChatIds === 'string') {
+        idList = rawChatIds.split(/[\r\n,;]+/).map(s => s.trim()).filter(Boolean);
+      }
+      // Deduplicate IDs while preserving order
+      idList = [...new Set(idList)];
 
-      if (!botToken || !targetChatId) {
-        console.log('[Telegram] No Bot Token or Chat ID configured. Report stored locally.');
+      if (!botToken || idList.length === 0) {
+        console.log('[Telegram] No Bot Token or Chat IDs configured. Report stored locally.');
         return res.json({
           ok: false,
-          warning: 'لم يتم إدخال توكن بوت التيليجرام أو معرّف المحادثة في الإعدادات. تم حفظ التقرير محلياً بنجاح.',
+          warning: 'لم يتم إدخال توكن بوت التيليجرام أو معرّفات المحادثة في الإعدادات. تم حفظ التقرير محلياً بنجاح.',
           savedLocally: true
         });
       }
 
-      // If Excel file provided, send as Document
+      let fileBuffer: Buffer | null = null;
       if (fileBase64 && fileName) {
-        const fileBuffer = Buffer.from(fileBase64, 'base64');
-        const formData = new FormData();
-        formData.append('chat_id', targetChatId);
-        const fileBlob = new Blob([fileBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        formData.append('document', fileBlob, fileName);
-        if (caption) {
-          formData.append('caption', caption);
-          formData.append('parse_mode', 'Markdown');
-        }
-
-        const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
-          method: 'POST',
-          body: formData
-        });
-        const tgData: any = await tgRes.json();
-        return res.json({ ok: tgData.ok, telegram: tgData });
-      } else {
-        // Send as markdown message
-        const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: targetChatId,
-            text: caption,
-            parse_mode: 'Markdown'
-          })
-        });
-        const tgData: any = await tgRes.json();
-        return res.json({ ok: tgData.ok, telegram: tgData });
+        fileBuffer = Buffer.from(fileBase64, 'base64');
       }
+
+      const results: Array<{ chatId: string; ok: boolean; messageId?: number; description?: string; error?: string }> = [];
+
+      // Send report to every configured Chat ID
+      for (const targetChatId of idList) {
+        try {
+          if (fileBuffer && fileName) {
+            const formData = new FormData();
+            formData.append('chat_id', targetChatId);
+            const fileBlob = new Blob([fileBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            formData.append('document', fileBlob, fileName);
+            if (caption) {
+              formData.append('caption', caption);
+              formData.append('parse_mode', 'Markdown');
+            }
+
+            const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
+              method: 'POST',
+              body: formData
+            });
+            const tgData: any = await tgRes.json();
+            results.push({
+              chatId: targetChatId,
+              ok: !!tgData.ok,
+              messageId: tgData.result?.message_id,
+              description: tgData.description
+            });
+          } else {
+            const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: targetChatId,
+                text: caption,
+                parse_mode: 'Markdown'
+              })
+            });
+            const tgData: any = await tgRes.json();
+            results.push({
+              chatId: targetChatId,
+              ok: !!tgData.ok,
+              messageId: tgData.result?.message_id,
+              description: tgData.description
+            });
+          }
+        } catch (targetErr: any) {
+          console.error(`[Telegram] Failed to send to chat ID ${targetChatId}:`, targetErr);
+          results.push({
+            chatId: targetChatId,
+            ok: false,
+            error: targetErr.message
+          });
+        }
+      }
+
+      const sentCount = results.filter(r => r.ok).length;
+      return res.json({
+        ok: sentCount > 0,
+        sentCount,
+        totalCount: idList.length,
+        results,
+        telegram: results[0] || null
+      });
     } catch (err: any) {
       console.error('[Telegram] Error sending shift report:', err);
       res.status(500).json({ ok: false, error: err.message });

@@ -288,11 +288,35 @@ export const ShiftReportService = {
     }
   },
 
-  // إرسال التقرير وملف Excel إلى بوت تيليجرام
+  // دالة مساعدة لاستخراج وتنقية قائمة معرفات التيليجرام
+  parseChatIds: (input) => {
+    if (!input) return [];
+    let list = [];
+    if (Array.isArray(input)) {
+      list = input.map(x => String(x).trim()).filter(Boolean);
+    } else if (typeof input === 'string') {
+      list = input.split(/[\r\n,;]+/).map(s => s.trim()).filter(Boolean);
+    }
+    return [...new Set(list)];
+  },
+
+  // جلب كافة معرفات التيليجرام المحفوظة بالإعدادات
+  getConfiguredChatIds: (customIds) => {
+    if (customIds) {
+      const parsed = ShiftReportService.parseChatIds(customIds);
+      if (parsed.length > 0) return parsed;
+    }
+    const config = DataService.get('storeConfig') || JSON.parse(localStorage.getItem('cs_configs') || '{}');
+    const fromConfig = config.telegramChatIds || config.telegramChatId || '1724117996';
+    const res = ShiftReportService.parseChatIds(fromConfig);
+    return res.length > 0 ? res : ['1724117996'];
+  },
+
+  // إرسال التقرير وملف Excel إلى بوت تيليجرام (يدعم عدة أشخاص ومجموعات)
   sendToTelegramBot: async (report, workbook) => {
     const config = DataService.get('storeConfig') || JSON.parse(localStorage.getItem('cs_configs') || '{}');
     const botToken = config.telegramBotToken || '8864429923:AAFUW-7EV7xkxR0jFIizs9Oc4hPUnG8HeEs';
-    const chatId = config.telegramChatId || '1724117996';
+    const chatIds = ShiftReportService.getConfiguredChatIds();
 
     const wb = workbook || ShiftReportService.generateExcelWorkbook(report);
 
@@ -330,13 +354,14 @@ export const ShiftReportService = {
     const fileName = `Shift_Report_${report.cashierName || 'Cashier'}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
     try {
-      // إرسال الطلب إلى السيرفر ليقوم بالتواصل مع Telegram Bot API
+      // إرسال الطلب إلى السيرفر ليقوم بالتواصل مع Telegram Bot API لكافة المعرفات
       const res = await fetch('/api/telegram/send-shift-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token: botToken,
-          chatId: chatId,
+          chatIds: chatIds,
+          chatId: chatIds[0] || '',
           caption: caption,
           fileName: fileName,
           fileBase64: wbout,
@@ -351,26 +376,42 @@ export const ShiftReportService = {
       });
 
       const data = await res.json();
-      return { success: data.ok, ...data };
+      return {
+        success: !!data.ok,
+        sentCount: data.sentCount || (data.ok ? chatIds.length : 0),
+        totalCount: chatIds.length,
+        ...data
+      };
     } catch (err) {
-      console.warn('Backend Telegram relay error, trying direct fetch if token configured:', err);
+      console.warn('Backend Telegram relay error, trying direct fetch fallback:', err);
       // Fallback: If client can directly reach Telegram and token exists
-      if (botToken && chatId) {
-        try {
-          const directRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              text: caption,
-              parse_mode: 'Markdown'
-            })
-          });
-          const dData = await directRes.json();
-          return { success: dData.ok, ...dData };
-        } catch (e) {
-          console.error('Direct Telegram message also failed:', e);
+      if (botToken && chatIds.length > 0) {
+        const results = [];
+        for (const targetId of chatIds) {
+          try {
+            const directRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: targetId,
+                text: caption,
+                parse_mode: 'Markdown'
+              })
+            });
+            const dData = await directRes.json();
+            results.push({ chatId: targetId, ok: !!dData.ok, data: dData });
+          } catch (e) {
+            results.push({ chatId: targetId, ok: false, error: e.message });
+          }
         }
+        const sentCount = results.filter(r => r.ok).length;
+        return {
+          success: sentCount > 0,
+          ok: sentCount > 0,
+          sentCount,
+          totalCount: chatIds.length,
+          results
+        };
       }
       return { success: false, ok: false, error: err.message };
     }
@@ -382,18 +423,19 @@ export const ShiftReportService = {
     return await ShiftReportService.sendToTelegramBot(report, wb);
   },
 
-  // اختبار الاتصال بالبوت
-  testTelegramBot: async (token, chatId) => {
+  // اختبار الاتصال بالبوت وإرسال رسالة تجريبية لكافة المعرفات المدخلة
+  testTelegramBot: async (token, rawChatIds) => {
     const t = token || '8864429923:AAFUW-7EV7xkxR0jFIizs9Oc4hPUnG8HeEs';
-    const c = chatId || '1724117996';
-    const testMsg = `🔔 *رسالة اختبار اتصال بوت التيليجرام من نظام الكاشير*\n\nتم التحقق من صحة التوكن ومعرف المحادثة بنجاح ✅\nجاهز لاستقبال ملفات إكسيل تقارير إقفال الورديات اليومية والمصروفات وجرد الدرج!`;
+    const ids = ShiftReportService.getConfiguredChatIds(rawChatIds);
+
+    const testMsg = `🔔 *رسالة اختبار اتصال بوت التيليجرام من نظام الكاشير*\n\nتم التحقق من صحة التوكن ومعرفات المحادثة (${ids.length} مستلم) بنجاح ✅\nجاهز لاستقبال ملفات إكسيل تقارير إقفال الورديات اليومية والمصروفات وجرد الدرج!`;
 
     const res = await fetch('/api/telegram/send-shift-report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         token: t,
-        chatId: c,
+        chatIds: ids,
         caption: testMsg
       })
     });

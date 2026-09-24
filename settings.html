@@ -387,157 +387,6 @@ body {
           </div>
         </div>
 
-        <!-- قسم تخصيص محتوى وتصميم الفاتورة الأساسية للعميل -->
-        <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:14px;margin:14px 0;">
-          <div style="font-weight:800;font-size:14px;color:#0f172a;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-            <span>🧾 تخصيص تفاصيل ومحتوى فاتورة الحساب (Receipt Customizer):</span>
-          </div>
-
-          <div class="grid-2">
-            <div class="form-group">
-              <label>الشعار اللفظي أو العنوان الفرعي أعلى الفاتورة</label>
-              <input type="text" id="cfgReceiptHeaderSubtitle" placeholder="مثال: أرقى المأكولات والمشروبات والضيافة" />
-            </div>
-            <div class="form-group">
-              <label>السجل التجاري والبطاقة الضريبية (اختياري)</label>
-              <input type="text" id="cfgReceiptTaxNumber" placeholder="مثال: س.ت: 12345 — بطاقة ضريبية: 987654" />
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <div class="form-group">
-              <label>ملاحظة وسياسة المنشأة (أسفل الفاتورة)</label>
-              <input type="text" id="cfgReceiptPolicyNote" placeholder="مثال: البضاعة المباعة لا ترد ولا تستبدل بعد مغادرة المحل" />
-            </div>
-            <div class="form-group">
-              <label>بيانات شبكة الواي فاي للعملاء (WiFi Guest)</label>
-              <input type="text" id="cfgReceiptWifiInfo" placeholder="مثال: WiFi: Guest_Net / Pass: 12345678" />
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <div class="form-group">
-              <label>عنوان خانة الملاحظات / الكومنت بالفاتورة</label>
-              <input type="text" id="cfgOrderCommentLabel" placeholder="ملاحظات الفاتورة:" />
-            </div>
-            <div class="form-group">
-              <label>إظهار كود الباركود برقم الفاتورة</label>
-              <select id="cfgShowReceiptBarcode">
-                <option value="true">نعم — طباعة باركود أسفل الفاتورة</option>
-                <option value="false">لا — إخفاء الباركود</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- خيارات إظهار وإخفاء حقول الفاتورة -->
-          <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #cbd5e1;display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;font-size:12.5px;">
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="checkbox" id="cfgShowCashierName" checked />
-              <span>إظهار اسم الكاشير المسؤول</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="checkbox" id="cfgShowCustomerInfo" checked />
-              <span>إظهار بيانات واسم العميل</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="checkbox" id="cfgShowOrderComment" checked />
-              <span>إظهار كومنت وملاحظات الطلب</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="checkbox" id="cfgShowDateTime" checked />
-              <span>إظهار تاريخ ووقت الفاتورة</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- قسم تخصيص بون التشغيل للـ Round وبون المطبخ والبار (بدون أسعار) -->
-        <div style="background:#fefce8;border:1px solid #fde047;border-radius:6px;padding:14px;margin:14px 0;">
-          <div style="font-weight:800;font-size:14px;color:#854d0e;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-            <span>🍳 تخصيص بون تشغيل الـ Round وبون المطبخ والبار (Orders / Kitchen Ticket):</span>
-          </div>
-
-          <div class="grid-2">
-            <div class="form-group">
-              <label>عنوان بون المطبخ (Food Ticket Title)</label>
-              <input type="text" id="cfgKitchenTicketTitle" placeholder="*** بون تشغيل المطبخ / الطعام 👨‍🍳🍽️ ***" />
-            </div>
-            <div class="form-group">
-              <label>عنوان بون البار (Drinks Ticket Title)</label>
-              <input type="text" id="cfgBarTicketTitle" placeholder="*** بون تشغيل البار / المشروبات ☕🍹 ***" />
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <div class="form-group">
-              <label>عنوان ملاحظات الـ Round في البون</label>
-              <input type="text" id="cfgRoundCommentLabel" placeholder="ملاحظات تجهيز الـ Round:" />
-            </div>
-            <div class="form-group">
-              <label>إظهار رقم الـ Round في البون</label>
-              <select id="cfgShowRoundNumber">
-                <option value="true">نعم — إظهار طلب Round #X بخط عريض</option>
-                <option value="false">لا — إخفاء رقم الـ Round</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- خيارات إظهار وإخفاء حقول بون الـ Round والمطبخ -->
-          <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #facc15;display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;font-size:12.5px;">
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="checkbox" id="cfgShowTableInfo" checked />
-              <span>إظهار رقم واسم الطاولة</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="checkbox" id="cfgShowRoundServer" checked />
-              <span>إظهار اسم الويتر / المسؤول</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="checkbox" id="cfgShowRoundTime" checked />
-              <span>إظهار وقت إرسال الـ Round</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="checkbox" id="cfgShowItemNotes" checked />
-              <span>إظهار ملاحظات الأصناف الفردية</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="checkbox" id="cfgShowRoundComment" checked />
-              <span>إظهار كومنت الـ Round في البون</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- قسم إعدادات شاشة العميل التفاعلية والشاشة رقم 2 -->
-        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:14px;margin:14px 0;">
-          <div style="font-weight:800;font-size:14px;color:#1e40af;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-            <span>🖥️ إعدادات شاشة العميل التفاعلية على الشاشة رقم 2 (Dual-Screen POS):</span>
-          </div>
-
-          <div class="grid-2">
-            <div class="form-group">
-              <label>الفتح التلقائي لشاشة العميل عند بدء الكاشير</label>
-              <select id="cfgAutoOpenCustomerDisplay">
-                <option value="true">نعم — فتح تلقائي على الشاشة الثانية (موصى به)</option>
-                <option value="false">يدوي — عند الضغط على زر شاشة العميل فقط</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>موضع الشاشة رقم 2 بالنسبة للشاشة الرئيسية</label>
-              <select id="cfgCustomerScreenPosition">
-                <option value="top">أعلى الشاشة الرئيسية (Top) — تطابق إعدادات جهازك Diebold Nixdorf</option>
-                <option value="right">يمين الشاشة الرئيسية (Right)</option>
-                <option value="left">يسار الشاشة الرئيسية (Left)</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
-            <span style="font-size:12px;color:#3b82f6;">💡 ملاحظة: اضغط على زر الاختبار لفتح شاشة العميل ونقلها تلقائياً للشاشة الثانية والتأكد من إذن الـ Popups.</span>
-            <button type="button" class="btn-secondary" style="background:#dbeafe;border-color:#93c5fd;color:#1e40af;font-weight:700;font-size:12px;" onclick="testOpenCustomerScreen()">
-              🖥️ فتح واختبار شاشة العميل الآن
-            </button>
-          </div>
-        </div>
-
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;margin:12px 0;">
           <div style="font-weight:800;font-size:13px;margin-bottom:6px;color:#1e293b;display:flex;align-items:center;gap:6px;">
             <span>📋 إرشادات مهمة لتعريف وتشغيل طابعة Rongta RP336 على الجهاز:</span>
@@ -620,96 +469,80 @@ body {
     <!-- CARD 2.8: TELEGRAM BOT INTEGRATION -->
     <div class="settings-card" style="border-color:#38bdf8;background:#f0f9ff;">
       <div class="card-header" style="border-color:#bae6fd;">
-        <div class="card-title" style="color:#0284c7;display:flex;align-items:center;gap:8px;">
-          <span>🤖 ربط بوت التيليجرام لإرسال تقارير الورديات والإكسيل</span>
-          <span style="font-size:12px;padding:2px 8px;border-radius:12px;background:#dcfce7;color:#15803d;font-weight:bold;">مفعل ومربوط ✅</span>
+        <div class="card-title" style="color:#0284c7;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span>🤖 ربط بوت التيليجرام لإرسال تقارير الورديات والإكسيل</span>
+            <span style="font-size:12px;padding:2px 8px;border-radius:12px;background:#dcfce7;color:#15803d;font-weight:bold;">يدعم عدة مستلمين ✅</span>
+          </div>
+          <span id="tgRecipientsCountBadge" style="font-size:12px;padding:3px 10px;border-radius:12px;background:#e0f2fe;color:#0369a1;font-weight:bold;">مستلم واحد</span>
         </div>
-        <div class="card-desc">عند قيام الكاشير أو المحاسب بإغلاق الوردية من صفحة الحسابات، يُرسل البوت تلقائياً ملخصاً شاملاً بالدرج والمصروفات ومرفقاً معه ملف Excel كامل يحتوي على 6 أوراق عمل تفصيلية.</div>
+        <div class="card-desc">عند قيام الكاشير أو المحاسب بإغلاق الوردية من صفحة الحسابات، يُرسل البوت تلقائياً ملخصاً شاملاً بالدرج والمصروفات ومرفقاً معه ملف Excel كامل يحتوي على 6 أوراق عمل تفصيلية لجميع أرقام ومعرفات التيليجرام المسجلة هنا.</div>
       </div>
 
       <form onsubmit="handleSaveTelegram(event)">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-          <div class="form-group">
-            <label>توكن البوت (Bot Token) *</label>
-            <input type="text" id="cfgTelegramToken" placeholder="8864429923:AAFUW-..." required style="direction:ltr;text-align:left;font-family:monospace;" />
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>توكن البوت (Bot Token) *</label>
+          <input type="text" id="cfgTelegramToken" placeholder="8864429923:AAFUW-..." required style="direction:ltr;text-align:left;font-family:monospace;" />
+          <small style="color:var(--text-muted);font-size:11.5px;display:block;margin-top:4px;">احصل عليه من بوت <strong>@BotFather</strong> على تيليجرام عند إنشاء البوت.</small>
+        </div>
+
+        <div class="form-group" style="margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <label style="margin-bottom:0;">معرفات المحادثات أو القنوات (Chat IDs) — (يمكنك وضع أكثر من شخص) *</label>
+            <span style="font-size:11px;color:#0284c7;font-weight:bold;">افصل بفاصلة (,) أو سطر جديد</span>
           </div>
-          <div class="form-group">
-            <label>معرف المحادثة أو القناة (Chat ID) *</label>
-            <input type="text" id="cfgTelegramChatId" placeholder="1724117996" required style="direction:ltr;text-align:left;font-family:monospace;" />
+          <textarea id="cfgTelegramChatId" rows="3" placeholder="1724117996, 987654321, -100123456789" required style="direction:ltr;text-align:left;font-family:monospace;font-size:13px;line-height:1.6;resize:vertical;" oninput="updateTelegramRecipientsList()"></textarea>
+          
+          <div style="margin-top:8px;background:#ffffff;border:1px solid #e0f2fe;border-radius:6px;padding:8px 12px;">
+            <div style="font-size:11.5px;font-weight:bold;color:#475569;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
+              <span>👥 قائمة المستلمين المكتشفين حالياً:</span>
+              <span id="tgParsedCountText" style="color:#0284c7;">0 مستلم</span>
+            </div>
+            <div id="telegramIdsBadgeContainer" style="display:flex;flex-wrap:wrap;gap:6px;min-height:26px;align-items:center;">
+              <span style="font-size:11.5px;color:#94a3b8;">لا توجد معرفات مدخلة</span>
+            </div>
           </div>
         </div>
 
+        <!-- أداة إضافة سريعة لمعرف إضافي -->
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;background:#f8fafc;padding:8px 12px;border-radius:6px;border:1px dashed #cbd5e1;">
+          <span style="font-size:12px;font-weight:700;color:#334155;white-space:nowrap;">➕ إضافة معرّف إضافي سريعاً:</span>
+          <input type="text" id="quickAddChatIdInp" placeholder="اكتب Chat ID هنا واضغط إضافة" style="flex:1;padding:6px 10px;font-size:12.5px;direction:ltr;text-align:left;font-family:monospace;" onkeydown="if(event.key==='Enter'){event.preventDefault();addQuickTelegramId();}" />
+          <button type="button" class="btn-secondary" style="padding:6px 14px;font-size:12px;font-weight:700;white-space:nowrap;background:#e0f2fe;border-color:#bae6fd;color:#0369a1;" onclick="addQuickTelegramId()">+ إضافة للقائمة</button>
+        </div>
+
         <div style="background:#ffffff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:#1e40af;line-height:1.7;">
-          📌 <strong>محتويات ملف Excel المرسل للبوت تلقائياً عند غلق الوردية:</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
-            <span style="background:#eff6ff;padding:3px 8px;border-radius:4px;border:1px solid #dbeafe;">1️⃣ الملخص وحساب الدرج والفارق</span>
-            <span style="background:#eff6ff;padding:3px 8px;border-radius:4px;border:1px solid #dbeafe;">2️⃣ كشف المصروفات بالتفصيل</span>
-            <span style="background:#eff6ff;padding:3px 8px;border-radius:4px;border:1px solid #dbeafe;">3️⃣ استهلاك المواد الخام من المخزن</span>
-            <span style="background:#eff6ff;padding:3px 8px;border-radius:4px;border:1px solid #dbeafe;">4️⃣ كميات وقيم الأصناف المباعة</span>
-            <span style="background:#eff6ff;padding:3px 8px;border-radius:4px;border:1px solid #dbeafe;">5️⃣ سجل الفواتير المنفذة</span>
-            <span style="background:#eff6ff;padding:3px 8px;border-radius:4px;border:1px solid #dbeafe;">6️⃣ مدة عمل الكاشير وسجل الدخول</span>
+          <div style="font-weight:bold;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+            <span>💡 نصائح مهمة لتيليجرام:</span>
           </div>
+          <ul style="margin:0;padding-right:20px;">
+            <li><strong>محادثات الأشخاص (Users):</strong> يجب على كل شخص الضغط على <strong>Start</strong> في البوت أولاً ليتمكن البوت من مراسلته. يمكنك معرفة الـ Chat ID الخاص بك بمراسلة بوت <code>@userinfobot</code> على تيليجرام.</li>
+            <li><strong>الجروبات والقنوات (Groups/Channels):</strong> أضف البوت مشرفاً (Admin) في الجروب أو القناة، وسيكون الـ ID الخاص بها يبدأ بـ <code>-100...</code> أو <code>-...</code>.</li>
+            <li><strong>تقارير إكسيل التلقائية:</strong> يتم إرسال التقرير الشامل مع ملف Excel لجميع هؤلاء الأشخاص في نفس اللحظة فور إقفال الوردية.</li>
+          </ul>
         </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <button type="button" class="btn-secondary" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;font-weight:800;" onclick="testTelegramBot()">
-            📱 تجربة إرسال رسالة اختبار للبوت للتأكد
+            📱 تجربة إرسال رسالة اختبار لجميع المعرفات للتأكد
           </button>
           <button type="submit" class="btn-primary">حفظ إعدادات التيليجرام</button>
         </div>
       </form>
     </div>
 
-    <!-- CARD 3: OFFLINE BACKUP VAULT -->
-    <div class="settings-card" style="border-color:#cbd5e1;">
-      <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
-        <div>
-          <div class="card-title" style="display:flex;align-items:center;gap:8px;">
-            <span>🗄️ خزينة النسخ الاحتياطية المحلية (Offline Backup Vault)</span>
-            <span style="font-size:11.5px;padding:3px 10px;border-radius:12px;background:#f1f5f9;color:#334155;font-weight:700;">مجلد data/backups المحلي</span>
-          </div>
-          <div class="card-desc">أخذ لقطات فورية لكامل ملفات بيانات النظام وتخزينها في مجلد محلي بالسيرفر بدون أي مزامنة خارجية، مع إمكانية استرجاع أو تحميل أي نسخة بنقرة واحدة.</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button type="button" class="btn-primary" style="background:#0f766e;border-color:#0f766e;" onclick="createVaultSnapshot()">
-            + إنشاء نسخة احتياطية محلية الآن 📸
-          </button>
-          <button type="button" class="btn-secondary" style="font-size:12px;" onclick="loadBackupVaultList()">
-            تحديث القائمة 🔄
-          </button>
-        </div>
+    <!-- CARD 3: BACKUP & RESTORE -->
+    <div class="settings-card">
+      <div class="card-header">
+        <div class="card-title">النسخ الاحتياطي واستعادة البيانات</div>
+        <div class="card-desc">تصدير قاعدة بيانات النظام محلياً بصيغة JSON أو استيراد نسخة سابقة</div>
       </div>
-
-      <!-- TABLE OF LOCAL BACKUPS IN VAULT -->
-      <div style="margin:14px 0;overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:12.5px;text-align:right;">
-          <thead>
-            <tr style="background:#f8fafc;border-bottom:2px solid var(--border);color:var(--text-muted);">
-              <th style="padding:10px 12px;">اسم ملف النسخة</th>
-              <th style="padding:10px 12px;">تاريخ وساعة الإنشاء</th>
-              <th style="padding:10px 12px;">الحجم</th>
-              <th style="padding:10px 12px;">عدد الملفات</th>
-              <th style="padding:10px 12px;text-align:center;">إجراءات واسترجاع</th>
-            </tr>
-          </thead>
-          <tbody id="backupVaultTableBody">
-            <tr>
-              <td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">جاري فحص محتويات مجلد الخزينة المحلية...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- LEGACY EXPORT / IMPORT -->
-      <div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-        <span style="font-size:12px;color:var(--text-muted);">أو حفظ / استيراد نسخة يدوية على جهازك بصيغة ملف JSON:</span>
-        <div style="display:flex;gap:8px;">
-          <button type="button" class="btn-secondary" style="font-size:12px;" onclick="exportBackupData()">تصدير JSON لجهازك ⬇️</button>
-          <label class="btn-secondary" style="margin:0;cursor:pointer;font-size:12px;">
-            استيراد ملف JSON ⬆️
-            <input type="file" id="restoreFileInp" accept=".json" style="display:none;" onchange="importBackupData(event)" />
-          </label>
-        </div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <button class="btn-secondary" onclick="exportBackupData()">تصدير نسخة احتياطية (Download JSON)</button>
+        <label class="btn-secondary" style="margin:0;cursor:pointer;">
+          استيراد نسخة سابقة (Restore JSON)
+          <input type="file" id="restoreFileInp" accept=".json" style="display:none;" onchange="importBackupData(event)" />
+        </label>
       </div>
     </div>
 
@@ -816,38 +649,14 @@ function loadSettings() {
   document.getElementById('cfgAutoPrint').value = cfg.autoPrint || 'enabled';
   document.getElementById('cfgReceiptFooter').value = cfg.receiptFooter || '';
 
-  // Receipt Customization fields
-  document.getElementById('cfgReceiptHeaderSubtitle').value = cfg.receiptHeaderSubtitle || '';
-  document.getElementById('cfgReceiptTaxNumber').value = cfg.receiptTaxNumber || '';
-  document.getElementById('cfgReceiptPolicyNote').value = cfg.receiptPolicyNote || '';
-  document.getElementById('cfgReceiptWifiInfo').value = cfg.receiptWifiInfo || '';
-  document.getElementById('cfgOrderCommentLabel').value = cfg.orderCommentLabel || 'ملاحظات الفاتورة:';
-  document.getElementById('cfgShowReceiptBarcode').value = cfg.showReceiptBarcode !== false ? 'true' : 'false';
-
-  document.getElementById('cfgShowCashierName').checked = cfg.showCashierName !== false;
-  document.getElementById('cfgShowCustomerInfo').checked = cfg.showCustomerInfo !== false;
-  document.getElementById('cfgShowOrderComment').checked = cfg.showOrderComment !== false;
-  document.getElementById('cfgShowDateTime').checked = cfg.showDateTime !== false;
-
-  // Round & kitchen/bar ticket fields
-  document.getElementById('cfgKitchenTicketTitle').value = cfg.kitchenTicketTitle || '*** بون تشغيل المطبخ / الطعام 👨‍🍳🍽️ ***';
-  document.getElementById('cfgBarTicketTitle').value = cfg.barTicketTitle || '*** بون تشغيل البار / المشروبات ☕🍹 ***';
-  document.getElementById('cfgRoundCommentLabel').value = cfg.roundCommentLabel || 'ملاحظات تجهيز الـ Round:';
-  document.getElementById('cfgShowRoundNumber').value = cfg.showRoundNumber !== false ? 'true' : 'false';
-
-  document.getElementById('cfgShowTableInfo').checked = cfg.showTableInfo !== false;
-  document.getElementById('cfgShowRoundServer').checked = cfg.showRoundServer !== false;
-  document.getElementById('cfgShowRoundTime').checked = cfg.showRoundTime !== false;
-  document.getElementById('cfgShowItemNotes').checked = cfg.showItemNotes !== false;
-  document.getElementById('cfgShowRoundComment').checked = cfg.showRoundComment !== false;
-
-  // Customer display & Screen 2 fields
-  document.getElementById('cfgAutoOpenCustomerDisplay').value = cfg.autoOpenCustomerDisplay !== false ? 'true' : 'false';
-  document.getElementById('cfgCustomerScreenPosition').value = cfg.customerScreenPosition || 'top';
-
   // Telegram Config
+  const savedChatIds = cfg.telegramChatIds && cfg.telegramChatIds.length > 0
+    ? cfg.telegramChatIds.join(', ')
+    : (cfg.telegramChatId || '1724117996');
+
   document.getElementById('cfgTelegramToken').value = cfg.telegramBotToken || '8864429923:AAFUW-7EV7xkxR0jFIizs9Oc4hPUnG8HeEs';
-  document.getElementById('cfgTelegramChatId').value = cfg.telegramChatId || '1724117996';
+  document.getElementById('cfgTelegramChatId').value = savedChatIds;
+  updateTelegramRecipientsList();
 
   // GitHub Config
   const gh = getGitHubConfig();
@@ -856,31 +665,115 @@ function loadSettings() {
   document.getElementById('ghToken').value = gh.token || '';
 
   updateGHBadge();
-  loadBackupVaultList();
 }
+
+window.parseTelegramIdsFromInput = function() {
+  const raw = document.getElementById('cfgTelegramChatId').value || '';
+  return raw.split(/[\r\n,;]+/).map(s => s.trim()).filter(Boolean);
+};
+
+window.updateTelegramRecipientsList = function() {
+  const ids = window.parseTelegramIdsFromInput();
+  const container = document.getElementById('telegramIdsBadgeContainer');
+  const countBadge = document.getElementById('tgRecipientsCountBadge');
+  const countText = document.getElementById('tgParsedCountText');
+
+  if (countText) countText.textContent = `${ids.length} مستلم`;
+  if (countBadge) countBadge.textContent = ids.length === 0 ? 'لا توجد معرفات' : (ids.length === 1 ? 'مستلم واحد' : `${ids.length} مستلمين`);
+
+  if (!container) return;
+  if (ids.length === 0) {
+    container.innerHTML = `<span style="font-size:11.5px;color:#94a3b8;">يرجى كتابة معرّف Chat ID واحد على الأقل</span>`;
+    return;
+  }
+
+  container.innerHTML = ids.map(id => {
+    const isChannelOrGroup = id.startsWith('-');
+    const icon = isChannelOrGroup ? '👥' : '👤';
+    const typeLabel = isChannelOrGroup ? 'جروب/قناة' : 'مستخدم';
+    return `
+      <span style="display:inline-flex;align-items:center;gap:5px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;padding:2px 8px;border-radius:12px;font-size:11.5px;font-weight:700;">
+        <span>${icon}</span>
+        <span style="font-family:monospace;direction:ltr;">${id}</span>
+        <span style="font-size:9.5px;opacity:0.75;">(${typeLabel})</span>
+        <button type="button" onclick="removeTelegramId('${id}')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-weight:900;padding:0 2px;margin-right:2px;font-size:13px;line-height:1;" title="حذف هذا المعرف">×</button>
+      </span>
+    `;
+  }).join('');
+};
+
+window.addQuickTelegramId = function() {
+  const input = document.getElementById('quickAddChatIdInp');
+  const val = input.value.trim();
+  if (!val) return;
+
+  const currentIds = window.parseTelegramIdsFromInput();
+  if (currentIds.includes(val)) {
+    showToast('⚠️ هذا المعرف مضاف بالفعل في القائمة');
+    input.value = '';
+    return;
+  }
+
+  currentIds.push(val);
+  document.getElementById('cfgTelegramChatId').value = currentIds.join(', ');
+  input.value = '';
+  updateTelegramRecipientsList();
+  showToast(`✅ تمت إضافة المعرف (${val}) إلى قائمة المستلمين`);
+};
+
+window.removeTelegramId = function(idToRemove) {
+  const currentIds = window.parseTelegramIdsFromInput().filter(id => id !== idToRemove);
+  document.getElementById('cfgTelegramChatId').value = currentIds.join(', ');
+  updateTelegramRecipientsList();
+  showToast(`🗑️ تم حذف المعرف (${idToRemove})`);
+};
 
 window.handleSaveTelegram = async function(e) {
   e.preventDefault();
   const token = document.getElementById('cfgTelegramToken').value.trim();
-  const chatId = document.getElementById('cfgTelegramChatId').value.trim();
+  const rawChatIds = document.getElementById('cfgTelegramChatId').value.trim();
+  const parsedIds = window.parseTelegramIdsFromInput();
+
+  if (parsedIds.length === 0) {
+    alert('يرجى إدخال معرّف Chat ID واحد على الأقل للتيليجرام.');
+    return;
+  }
+
   const cfg = DataService.get('storeConfig') || JSON.parse(localStorage.getItem('cs_configs') || '{}');
   cfg.telegramBotToken = token;
-  cfg.telegramChatId = chatId;
+  cfg.telegramChatId = parsedIds.join(', ');
+  cfg.telegramChatIds = parsedIds;
   DataService.set('storeConfig', cfg);
   localStorage.setItem('cs_configs', JSON.stringify(cfg));
-  showToast('✅ تم حفظ إعدادات بوت التيليجرام بنجاح');
+  updateTelegramRecipientsList();
+  showToast(`✅ تم حفظ إعدادات التيليجرام وتعيين (${parsedIds.length}) مستلمين للتقارير بنجاح`);
 };
 
 window.testTelegramBot = async function() {
   const token = document.getElementById('cfgTelegramToken').value.trim();
-  const chatId = document.getElementById('cfgTelegramChatId').value.trim();
-  showToast('جاري إرسال رسالة اختبار إلى بوت التيليجرام...');
+  const parsedIds = window.parseTelegramIdsFromInput();
+
+  if (parsedIds.length === 0) {
+    alert('يرجى إدخال معرّف محادثة Chat ID واحد على الأقل قبل الاختبار.');
+    return;
+  }
+
+  showToast(`جاري إرسال رسائل اختبار إلى بوت التيليجرام لـ (${parsedIds.length}) مستلمين...`);
   try {
-    const res = await ShiftReportService.testTelegramBot(token, chatId);
-    if (res && (res.ok || res.telegram?.ok)) {
-      showToast('✅ وصلت الرسالة التجريبية إلى التيليجرام بنجاح!');
+    const res = await ShiftReportService.testTelegramBot(token, parsedIds);
+    if (res && res.ok) {
+      const sent = res.sentCount || parsedIds.length;
+      const total = res.totalCount || parsedIds.length;
+      showToast(`✅ وصلت الرسالة التجريبية بنجاح إلى ${sent} من ${total} مستلمين!`);
+      
+      // If some failed, notify with friendly alert
+      const failed = (res.results || []).filter(r => !r.ok);
+      if (failed.length > 0) {
+        const failedIds = failed.map(f => f.chatId).join(', ');
+        alert(`تنبيه: تم الإرسال بنجاح إلى ${sent} مستلم، ولكن تعذر الإرسال إلى المعرفات التالية: (${failedIds})\nيرجى التأكد من أن أصحاب هذه المعرفات قاموا بفتح المحادثة مع البوت والضغط على Start.`);
+      }
     } else {
-      alert(`تنبيه من سيرفر التيليجرام: ${res?.warning || res?.error || res?.telegram?.description || 'تأكد من فتح المحادثة والضغط على Start للبوت أولاً'}`);
+      alert(`تنبيه من سيرفر التيليجرام: ${res?.warning || res?.error || res?.telegram?.description || 'تأكد من فتح المحادثة والضغط على Start للبوت أولاً وصحة التوكن'}`);
     }
   } catch (err) {
     alert(`❌ خطأ في الاتصال: ${err.message}`);
@@ -1081,187 +974,8 @@ window.handleSavePrinter = function(e) {
   cfg.autoPrint = document.getElementById('cfgAutoPrint').value;
   cfg.receiptFooter = document.getElementById('cfgReceiptFooter').value.trim();
 
-  // Receipt customization
-  cfg.receiptHeaderSubtitle = document.getElementById('cfgReceiptHeaderSubtitle').value.trim();
-  cfg.receiptTaxNumber = document.getElementById('cfgReceiptTaxNumber').value.trim();
-  cfg.receiptPolicyNote = document.getElementById('cfgReceiptPolicyNote').value.trim();
-  cfg.receiptWifiInfo = document.getElementById('cfgReceiptWifiInfo').value.trim();
-  cfg.orderCommentLabel = document.getElementById('cfgOrderCommentLabel').value.trim();
-  cfg.showReceiptBarcode = document.getElementById('cfgShowReceiptBarcode').value === 'true';
-
-  cfg.showCashierName = document.getElementById('cfgShowCashierName').checked;
-  cfg.showCustomerInfo = document.getElementById('cfgShowCustomerInfo').checked;
-  cfg.showOrderComment = document.getElementById('cfgShowOrderComment').checked;
-  cfg.showDateTime = document.getElementById('cfgShowDateTime').checked;
-
-  // Ticket customization
-  cfg.kitchenTicketTitle = document.getElementById('cfgKitchenTicketTitle').value.trim();
-  cfg.barTicketTitle = document.getElementById('cfgBarTicketTitle').value.trim();
-  cfg.roundCommentLabel = document.getElementById('cfgRoundCommentLabel').value.trim();
-  cfg.showRoundNumber = document.getElementById('cfgShowRoundNumber').value === 'true';
-
-  cfg.showTableInfo = document.getElementById('cfgShowTableInfo').checked;
-  cfg.showRoundServer = document.getElementById('cfgShowRoundServer').checked;
-  cfg.showRoundTime = document.getElementById('cfgShowRoundTime').checked;
-  cfg.showItemNotes = document.getElementById('cfgShowItemNotes').checked;
-  cfg.showRoundComment = document.getElementById('cfgShowRoundComment').checked;
-
-  // Screen 2
-  cfg.autoOpenCustomerDisplay = document.getElementById('cfgAutoOpenCustomerDisplay').value === 'true';
-  cfg.customerScreenPosition = document.getElementById('cfgCustomerScreenPosition').value;
-
   DataService.set('storeConfig', cfg);
-  localStorage.setItem('cs_configs', JSON.stringify(cfg));
-  showToast('✅ تم حفظ كافة إعدادات وتخصيصات الفواتير والـ Rounds والشاشة 2 بنجاح');
-};
-
-window.testOpenCustomerScreen = async function() {
-  const pos = document.getElementById('cfgCustomerScreenPosition').value || 'top';
-  let targetLeft = 0;
-  let targetTop = -(window.screen.height || 768);
-  if (pos === 'right') {
-    targetLeft = window.screen.width || 1024;
-    targetTop = 0;
-  } else if (pos === 'left') {
-    targetLeft = -(window.screen.width || 1024);
-    targetTop = 0;
-  }
-
-  const w = window.screen.availWidth || 1024;
-  const h = window.screen.availHeight || 768;
-
-  // Window Management API if available
-  if ('getScreenDetails' in window) {
-    try {
-      const details = await window.getScreenDetails();
-      const secondary = details.screens.find(s => !s.isPrimary) || details.screens.find(s => s.availTop < 0) || details.screens[1];
-      if (secondary) {
-        targetLeft = secondary.availLeft;
-        targetTop = secondary.availTop;
-      }
-    } catch (e) {}
-  }
-
-  const win = window.open('customer-display.html', 'CustomerDisplayWindow',
-    `left=${targetLeft},top=${targetTop},width=${w},height=${h},menubar=no,toolbar=no,location=no,status=no,resizable=yes`);
-  if (win) {
-    win.focus();
-    showToast('تم فتح شاشة العميل في الشاشة الثانية 🖥️');
-  } else {
-    showToast('تنبيه: يرجى السماح بالنوافذ المنبثقة (Popups) في المتصفح لفتح شاشة العميل');
-  }
-};
-
-// -------------------------------------------------------------
-// Offline Backup Vault API Client
-// -------------------------------------------------------------
-window.loadBackupVaultList = async function() {
-  const tbody = document.getElementById('backupVaultTableBody');
-  if (!tbody) return;
-  tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-muted);">جاري فحص محتويات الخزينة المحلية...</td></tr>`;
-
-  try {
-    const res = await fetch('/api/backup-vault/list');
-    const json = await res.json();
-    const ok = json.ok || json.success;
-    if (!ok || !json.backups || json.backups.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted);">لا توجد نسخ احتياطية في مجلد الخزينة المحلية حتى الآن. اضغط "إنشاء نسخة احتياطية محلية الآن" لعمل أول لقطة.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = json.backups.map(b => {
-      const dateStr = new Date(b.createdAt || b.createdTime).toLocaleString('ar-EG');
-      const sizeStr = b.sizeKB ? (b.sizeKB + ' KB') : ((b.sizeBytes / 1024).toFixed(1) + ' KB');
-      const count = b.domainsCount || b.fileCount || 0;
-      return `
-        <tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:10px 12px;font-family:monospace;font-weight:700;color:#0f766e;">${b.filename}</td>
-          <td style="padding:10px 12px;">${dateStr}</td>
-          <td style="padding:10px 12px;">${sizeStr}</td>
-          <td style="padding:10px 12px;"><span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:10px;font-weight:bold;">${count} ملفات</span></td>
-          <td style="padding:10px 12px;text-align:center;">
-            <div style="display:flex;gap:6px;justify-content:center;">
-              <button type="button" class="btn-primary" style="padding:4px 8px;font-size:11px;background:#0d9488;border-color:#0d9488;" onclick="restoreVaultSnapshot('${b.filename}')" title="استرجاع هذه النسخة فوراً لقاعدة البيانات الحية">استرجاع 🔄</button>
-              <a href="/api/backup-vault/download/${encodeURIComponent(b.filename)}" class="btn-secondary" style="padding:4px 8px;font-size:11px;text-decoration:none;display:inline-block;" download title="تحميل ملف النسخة لجهازك">تحميل 📥</a>
-              <button type="button" class="btn-danger" style="padding:4px 8px;font-size:11px;" onclick="deleteVaultSnapshot('${b.filename}')" title="حذف هذه النسخة من الخزينة">حذف 🗑️</button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
-  } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:16px;color:#dc2626;">تعذر جلب محتويات الخزينة: ${err.message}</td></tr>`;
-  }
-};
-
-window.createVaultSnapshot = async function() {
-  const note = prompt('أدخل وصفاً أو ملاحظة للنسخة الاحتياطية (اختياري - مثلاً: قبل تعديل المنيو أو نهاية الأسبوع):', 'Manual_Snapshot');
-  if (note === null) return;
-
-  showToast('جاري أخذ لقطة كاملة وتخزينها في الخزينة المحلية...');
-  try {
-    const res = await fetch('/api/backup-vault/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ note: note || 'manual' })
-    });
-    const json = await res.json();
-    if (json.ok || json.success) {
-      showToast('✅ تم إنشاء النسخة الاحتياطية وحفظها في مجلد data/backups بنجاح!');
-      loadBackupVaultList();
-    } else {
-      alert('خطأ أثناء إنشاء النسخة: ' + (json.error || 'غير معروف'));
-    }
-  } catch (err) {
-    alert('فشل الاتصال بالسيرفر: ' + err.message);
-  }
-};
-
-window.restoreVaultSnapshot = async function(filename) {
-  const ok = confirm(`⚠️ تنبيه هام جداً:
-هل أنت متأكد من استرجاع النسخة (${filename})؟
-سيتم استبدال البيانات الحية في النظام بمحتوى هذه النسخة الاحتياطية.`);
-  if (!ok) return;
-
-  showToast('جاري استرجاع النسخة الاحتياطية وتحديث النظام...');
-  try {
-    const res = await fetch('/api/backup-vault/restore', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename })
-    });
-    const json = await res.json();
-    if (json.ok || json.success) {
-      alert(`✅ تم استرجاع النسخة الاحتياطية بنجاح!
-تم استرجاع ${json.restoredFiles?.length || 0} ملفاً.
-سيتم تحديث الصفحة الآن.`);
-      window.location.reload();
-    } else {
-      alert('خطأ أثناء الاسترجاع: ' + (json.error || 'غير معروف'));
-    }
-  } catch (err) {
-    alert('فشل الاسترجاع: ' + err.message);
-  }
-};
-
-window.deleteVaultSnapshot = async function(filename) {
-  const ok = confirm(`هل أنت متأكد من حذف النسخة الاحتياطية (${filename}) نهائياً من الخزينة؟`);
-  if (!ok) return;
-
-  try {
-    const res = await fetch(`/api/backup-vault/${encodeURIComponent(filename)}`, {
-      method: 'DELETE'
-    });
-    const json = await res.json();
-    if (json.ok || json.success) {
-      showToast('تم حذف النسخة من الخزينة');
-      loadBackupVaultList();
-    } else {
-      alert('تعذر الحذف: ' + (json.error || 'غير معروف'));
-    }
-  } catch (err) {
-    alert('فشل طلب الحذف: ' + err.message);
-  }
+  showToast('تم حفظ إعدادات طابعة Rongta والإيصالات بنجاح');
 };
 
 window.testRongtaPrinter = function() {
