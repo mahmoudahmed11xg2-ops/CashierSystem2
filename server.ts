@@ -128,6 +128,180 @@ async function startServer() {
     }
   });
 
+  // -------------------------------------------------------------
+  // Backup Vault (Local Backup Store Without External Syncing)
+  // -------------------------------------------------------------
+  const BACKUP_DIR = path.join(__dirname, 'data', 'backups');
+  if (!fs.existsSync(BACKUP_DIR)) {
+    try {
+      fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    } catch (e) {
+      console.warn('Could not create backups directory:', e);
+    }
+  }
+
+  // Helper to create a snapshot object
+  function createSnapshotObject(note = 'نسخة احتياطية محلية') {
+    const backupData: Record<string, any> = {};
+    for (const key of Object.keys(DOMAIN_FILES)) {
+      backupData[key] = readDomainFile(key);
+    }
+    const now = new Date();
+    return {
+      meta: {
+        createdAt: now.toISOString(),
+        timestamp: now.getTime(),
+        note: note || 'نسخة احتياطية محلية من النظام',
+        domainsCount: Object.keys(backupData).length,
+        version: '2.0.0'
+      },
+      data: backupData
+    };
+  }
+
+  // Create initial backup if none exists
+  try {
+    const existing = fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith('.json'));
+    if (existing.length === 0) {
+      const initialSnapshot = createSnapshotObject('نسخة احتياطية أولية عند بدء النظام');
+      const filename = `backup_initial_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.json`;
+      fs.writeFileSync(path.join(BACKUP_DIR, filename), JSON.stringify(initialSnapshot, null, 2), 'utf-8');
+      console.log(`[Backup Vault] Initial local backup snapshot created: ${filename}`);
+    }
+  } catch (e) {}
+
+  // List Backups in Vault
+  app.get('/api/backup-vault/list', (req, res) => {
+    try {
+      if (!fs.existsSync(BACKUP_DIR)) {
+        fs.mkdirSync(BACKUP_DIR, { recursive: true });
+      }
+      const files = fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith('.json'));
+      const list = files.map(file => {
+        const fullPath = path.join(BACKUP_DIR, file);
+        const stats = fs.statSync(fullPath);
+        let note = 'نسخة احتياطية';
+        let domainsCount = Object.keys(DOMAIN_FILES).length;
+        let createdAt = stats.mtime.toISOString();
+        try {
+          const content = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+          if (content.meta) {
+            note = content.meta.note || note;
+            domainsCount = content.meta.domainsCount || domainsCount;
+            createdAt = content.meta.createdAt || createdAt;
+          }
+        } catch (err) {}
+
+        return {
+          filename: file,
+          createdAt,
+          sizeBytes: stats.size,
+          sizeKB: (stats.size / 1024).toFixed(1),
+          note,
+          domainsCount
+        };
+      });
+
+      // Sort newest first
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      res.json({ ok: true, path: 'data/backups/', backups: list });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Create New Backup in Vault
+  app.post('/api/backup-vault/create', (req, res) => {
+    try {
+      const { note } = req.body || {};
+      const snapshot = createSnapshotObject(note || 'نسخة احتياطية يدوية');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const filename = `backup_${ts}.json`;
+      const fullPath = path.join(BACKUP_DIR, filename);
+
+      fs.writeFileSync(fullPath, JSON.stringify(snapshot, null, 2), 'utf-8');
+      const stats = fs.statSync(fullPath);
+
+      res.json({
+        ok: true,
+        message: 'تم حفظ النسخة الاحتياطية في المخزن بنجاح',
+        backup: {
+          filename,
+          createdAt: snapshot.meta.createdAt,
+          sizeKB: (stats.size / 1024).toFixed(1),
+          note: snapshot.meta.note,
+          domainsCount: snapshot.meta.domainsCount
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Restore from Vault
+  app.post('/api/backup-vault/restore', (req, res) => {
+    try {
+      const { filename } = req.body || {};
+      if (!filename) return res.status(400).json({ ok: false, error: 'اسم الملف مطلوب' });
+
+      // Prevent directory traversal
+      const safeFilename = path.basename(filename);
+      const fullPath = path.join(BACKUP_DIR, safeFilename);
+
+      if (!fs.existsSync(fullPath)) {
+        return res.status(404).json({ ok: false, error: 'ملف النسخة الاحتياطية غير موجود' });
+      }
+
+      const content = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+      const dataToRestore = content.data || content;
+
+      let restoredCount = 0;
+      for (const [key, value] of Object.entries(dataToRestore)) {
+        if (DOMAIN_FILES[key]) {
+          writeDomainFile(key, value);
+          restoredCount++;
+        }
+      }
+
+      io.emit('cs:reload');
+      res.json({
+        ok: true,
+        message: `تم استرجاع النسخة الاحتياطية بنجاح (${restoredCount} قطاع بيانات)`,
+        restoredCount
+      });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Download backup from Vault
+  app.get('/api/backup-vault/download/:filename', (req, res) => {
+    try {
+      const safeFilename = path.basename(req.params.filename);
+      const fullPath = path.join(BACKUP_DIR, safeFilename);
+      if (!fs.existsSync(fullPath)) {
+        return res.status(404).json({ ok: false, error: 'ملف النسخة الاحتياطية غير موجود' });
+      }
+      res.download(fullPath, safeFilename);
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Delete backup from Vault
+  app.delete('/api/backup-vault/:filename', (req, res) => {
+    try {
+      const safeFilename = path.basename(req.params.filename);
+      const fullPath = path.join(BACKUP_DIR, safeFilename);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+      res.json({ ok: true, message: 'تم حذف النسخة الاحتياطية من المخزن بنجاح' });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   // Backup Export
   app.get('/api/backup/export', (req, res) => {
     const backup: Record<string, any> = {};

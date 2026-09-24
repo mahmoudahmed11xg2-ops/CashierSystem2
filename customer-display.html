@@ -189,9 +189,10 @@ body {
 <body>
 
 <div class="brand-side">
-  <div class="brand-badge-large">CS</div>
-  <h1 class="brand-heading">أهلاً بك في <span>Cashier System</span></h1>
-  <p class="brand-subheading">نسعد بتقديم أشهى الوجبات والمشروبات المحضرة بأعلى معايير الجودة والضيافة الراقية.</p>
+  <button id="fsBtn" onclick="toggleFullscreen()" style="position:absolute;top:16px;left:16px;background:#ffffff;border:1px solid var(--border-strong);padding:6px 12px;border-radius:var(--radius);font-size:12px;font-weight:700;cursor:pointer;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.1);">⛶ ملء الشاشة (F11)</button>
+  <div class="brand-badge-large" id="brandLogoText">CS</div>
+  <h1 class="brand-heading" id="brandHeaderTitle">أهلاً بك في <span>Cashier System</span></h1>
+  <p class="brand-subheading" id="brandHeaderSubtitle">نسعد بتقديم أشهى الوجبات والمشروبات المحضرة بأعلى معايير الجودة والضيافة الراقية.</p>
 
   <div class="notice-card" id="noticeCard">
     <span class="notice-tag" id="noticeTag">عرض اليوم</span>
@@ -204,6 +205,11 @@ body {
   <div class="order-header">
     <span class="order-title">مراجعة الطلب الحالي</span>
     <span class="order-badge" id="itemCount">0 أصناف</span>
+  </div>
+
+  <div id="orderCommentBox" style="display:none;margin:12px 28px 0;background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:8px 12px;font-size:12px;color:#1e40af;">
+    <strong style="margin-left:4px;">📝 ملاحظة الطلب:</strong>
+    <span id="orderCommentDisplay"></span>
   </div>
 
   <div class="order-items" id="itemsContainer">
@@ -227,6 +233,40 @@ body {
 </div>
 
 <script>
+window.toggleFullscreen = function() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.warn('Fullscreen request failed:', err);
+    });
+    const fsBtn = document.getElementById('fsBtn');
+    if (fsBtn) fsBtn.textContent = '⛶ تصغير الشاشة';
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+    const fsBtn = document.getElementById('fsBtn');
+    if (fsBtn) fsBtn.textContent = '⛶ ملء الشاشة (F11)';
+  }
+};
+
+// Double-click anywhere on brand side to toggle fullscreen
+document.querySelector('.brand-side')?.addEventListener('dblclick', () => {
+  window.toggleFullscreen();
+});
+
+// Load Store Branding
+try {
+  const storeCfg = JSON.parse(localStorage.getItem('cs_configs') || '{}');
+  if (storeCfg.storeName) {
+    const titleEl = document.getElementById('brandHeaderTitle');
+    if (titleEl) titleEl.innerHTML = `أهلاً بك في <span>${storeCfg.storeName}</span>`;
+  }
+  if (storeCfg.receiptHeaderSubtitle) {
+    const subEl = document.getElementById('brandHeaderSubtitle');
+    if (subEl) subEl.textContent = storeCfg.receiptHeaderSubtitle;
+  }
+} catch(e) {}
+
 let bc = null;
 try {
   bc = new BroadcastChannel('cs_order');
@@ -266,11 +306,22 @@ function updateOrderUI(data) {
   const subTotalEl = document.getElementById('subTotalVal');
   const discountEl = document.getElementById('discountVal');
   const grandTotalEl = document.getElementById('grandTotalVal');
+  const commentBox = document.getElementById('orderCommentBox');
+  const commentDisplay = document.getElementById('orderCommentDisplay');
 
   countEl.textContent = `${items.length} أصناف`;
   subTotalEl.textContent = `${(data.subtotal || 0).toLocaleString('ar-EG')} ج`;
   discountEl.textContent = data.discount > 0 ? `- ${(data.discount).toLocaleString('ar-EG')} ج` : '0 ج';
   grandTotalEl.textContent = `${(data.total || 0).toLocaleString('ar-EG')} ج`;
+
+  // Comment display
+  const commentText = data.comment || data.orderComment || '';
+  if (commentText && commentBox && commentDisplay) {
+    commentDisplay.textContent = commentText;
+    commentBox.style.display = 'block';
+  } else if (commentBox) {
+    commentBox.style.display = 'none';
+  }
 
   if (items.length === 0) {
     container.innerHTML = `<div class="empty-state">في انتظار تسجيل الأصناف من الكاشير...</div>`;

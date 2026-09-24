@@ -14,9 +14,31 @@ export const PRINTER_CONFIG_DEFAULT = {
   storePhone: '01000000000 - 01200000000',
   storeAddress: 'شارع النصر الرئيسي - الفرع الأول',
   taxNumber: '123-456-789',
+  receiptHeaderSubtitle: 'بون فواتير ومبيعات إلكترونية',
   receiptFooter: 'شكرًا لزيارتكم الكريمة ونسعد بخدمتكم دائمًا!',
+  receiptPolicyNote: 'الاستبدال والاسترجاع بالفاتورة الأصلية خلال المدة القانونية',
   showBarcode: true,
-  feedLines: 3
+  showStoreAddress: true,
+  showStorePhone: true,
+  showTaxNumber: true,
+  showCashierName: true,
+  showCustomerInfo: true,
+  showOrderComment: true,
+  orderCommentLabel: 'ملاحظات الفاتورة:',
+  feedLines: 3,
+  // Round / Kitchen / Bar Ticket Customization
+  kitchenTicketTitle: '*** بون تشغيل المطبخ / الطعام 👨‍🍳🍽️ ***',
+  barTicketTitle: '*** بون تشغيل البار / المشروبات ☕🍹 ***',
+  showRoundNumber: true,
+  showTableInfo: true,
+  showRoundTime: true,
+  showRoundServer: true,
+  showRoundComment: true,
+  roundCommentLabel: 'ملاحظات تجهيز الـ Round:',
+  showItemNotes: true,
+  // Dual Screen / Customer Display Settings
+  autoOpenCustomerDisplay: true,
+  customerScreenPosition: 'top' // 'top' (above display 1, matching Diebold Nixdorf), 'right', 'left'
 };
 
 export function getPrinterConfig() {
@@ -332,10 +354,10 @@ export function generateReceiptHTML(invoice, options = {}) {
 <body>
   <div class="receipt-container">
     <div class="header-logo-text">${cfg.storeName}</div>
-    <div class="header-subtitle">بون فواتير ومبيعات إلكترونية</div>
-    ${cfg.storeAddress ? `<div class="header-info">📍 ${cfg.storeAddress}</div>` : ''}
-    ${cfg.storePhone ? `<div class="header-info">📞 ${cfg.storePhone}</div>` : ''}
-    ${cfg.taxNumber ? `<div class="header-info">الرقم الضريبي: ${cfg.taxNumber}</div>` : ''}
+    <div class="header-subtitle">${cfg.receiptHeaderSubtitle || 'بون فواتير ومبيعات إلكترونية'}</div>
+    ${cfg.showStoreAddress !== false && cfg.storeAddress ? `<div class="header-info">📍 ${cfg.storeAddress}</div>` : ''}
+    ${cfg.showStorePhone !== false && cfg.storePhone ? `<div class="header-info">📞 ${cfg.storePhone}</div>` : ''}
+    ${cfg.showTaxNumber !== false && cfg.taxNumber ? `<div class="header-info">الرقم الضريبي: ${cfg.taxNumber}</div>` : ''}
 
     <div class="double-line"></div>
 
@@ -352,23 +374,24 @@ export function generateReceiptHTML(invoice, options = {}) {
         <span>التاريخ والوقت:</span>
         <span>${dateStr} - ${timeStr}</span>
       </div>
+      ${cfg.showCashierName !== false ? `
       <div class="meta-row">
         <span>الكاشير:</span>
         <span>${cashierName}</span>
-      </div>
+      </div>` : ''}
       ${invoice.waiter && invoice.waiter !== '—' ? `
         <div class="meta-row">
           <span>الويتر المسؤول:</span>
           <strong>${invoice.waiter}</strong>
         </div>
       ` : ''}
-      ${invoice.customer ? `
+      ${cfg.showCustomerInfo !== false && invoice.customer ? `
         <div class="meta-row">
           <span>اسم العميل:</span>
           <strong>${invoice.customer}</strong>
         </div>
       ` : ''}
-      ${invoice.customerPhone ? `
+      ${cfg.showCustomerInfo !== false && invoice.customerPhone ? `
         <div class="meta-row">
           <span>هاتف العميل:</span>
           <span>${invoice.customerPhone}</span>
@@ -387,6 +410,13 @@ export function generateReceiptHTML(invoice, options = {}) {
         </div>
       ` : ''}
     </div>
+
+    ${(invoice.comment || invoice.orderComment || invoice.note) && cfg.showOrderComment !== false ? `
+      <div class="receipt-comment-box" style="background:#f4f4f5;border:1.5px dashed #000;padding:5px 8px;margin:5px 0;font-size:12px;border-radius:3px;">
+        <div style="font-weight:900;font-size:11px;color:#000;">📝 ${cfg.orderCommentLabel || 'ملاحظات الفاتورة:'}</div>
+        <div style="font-weight:700;margin-top:2px;font-size:12.5px;color:#111;">${invoice.comment || invoice.orderComment || invoice.note}</div>
+      </div>
+    ` : ''}
 
     <div class="dashed-line"></div>
 
@@ -437,6 +467,7 @@ export function generateReceiptHTML(invoice, options = {}) {
 
     <div class="footer-box">
       <div class="footer-note">${cfg.receiptFooter}</div>
+      ${cfg.receiptPolicyNote ? `<div style="font-size:9.5px;color:#444;margin:4px 0 6px;line-height:1.4;">${cfg.receiptPolicyNote}</div>` : ''}
       ${cfg.showBarcode !== false ? generateBarcodeSVG(invoice.id || Date.now()) : ''}
       <div style="font-size:9.5px;color:#555;margin-top:4px;">نظام إدارة المطاعم والكاشير المتكامل</div>
     </div>
@@ -551,7 +582,7 @@ function showDirectPrintModal(htmlContent) {
 }
 
 // توليد كود HTML لبون تشغيل المطبخ أو البار (بدون أسعار نهائياً - إشعار طلب للمطبخ والبار)
-export function generateOrderTicketHTML({ destination = 'kitchen', order = {}, round = null, items = [] } = {}) {
+export function generateOrderTicketHTML({ destination = 'kitchen', order = {}, round = null, items = [], roundComment = '' } = {}) {
   const cfg = getPrinterConfig();
   const paperWidth = cfg.paperWidth === '58mm' ? '58mm' : '80mm';
   const printableWidth = paperWidth === '58mm' ? '48mm' : '72mm';
@@ -563,19 +594,31 @@ export function generateOrderTicketHTML({ destination = 'kitchen', order = {}, r
   };
 
   const isBar = destination === 'bar';
-  const ticketTitle = isBar ? '*** بون تشغيل البار / المشروبات ☕🍹 ***' : '*** بون تشغيل المطبخ / الطعام 👨‍🍳🍽️ ***';
-  const badgeColor = isBar ? '#0369a1' : '#b91c1c';
+  const defaultBarTitle = '*** بون تشغيل البار / المشروبات ☕🍹 ***';
+  const defaultKitchenTitle = '*** بون تشغيل المطبخ / الطعام 👨‍🍳🍽️ ***';
+  const ticketTitle = isBar 
+    ? (cfg.barTicketTitle || defaultBarTitle) 
+    : (cfg.kitchenTicketTitle || defaultKitchenTitle);
+
   const orderType = typeLabels[order.type] || order.type || 'طلب جديد';
-  const tableInfo = order.tableLabel ? `— ${order.tableLabel}` : (order.tableNumber ? `— طاولة ${order.tableNumber}` : '');
-  const roundInfo = round ? `<div style="font-size:14px;font-weight:900;background:#000;color:#fff;padding:4px 8px;margin:5px 0;text-align:center;border-radius:4px;">طلب Round #${round}</div>` : '';
+  const tableInfo = (cfg.showTableInfo !== false && (order.tableLabel || order.tableNumber)) 
+    ? (order.tableLabel ? `— ${order.tableLabel}` : `— طاولة ${order.tableNumber}`) 
+    : '';
+
+  const roundNum = round || order.roundNumber;
+  const roundInfo = (cfg.showRoundNumber !== false && roundNum) 
+    ? `<div style="font-size:15px;font-weight:900;background:#000;color:#fff;padding:4px 8px;margin:5px 0;text-align:center;border-radius:4px;">طلب Round #${roundNum}</div>` 
+    : '';
+
   const now = new Date();
   const timeStr = order.time || now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+  const commentText = roundComment || order.roundComment || order.comment || '';
 
   const ticketItems = (items && items.length > 0) ? items : (order.items || []);
   let itemsRows = '';
   ticketItems.forEach(it => {
     const qty = it.qty || 1;
-    const noteHtml = it.note ? `<div style="font-size:12px;font-weight:bold;margin-top:3px;background:#f0f0f0;border-right:3px solid #000;padding:2px 6px;">⚠️ ${it.note}</div>` : '';
+    const noteHtml = (cfg.showItemNotes !== false && it.note) ? `<div style="font-size:12px;font-weight:bold;margin-top:3px;background:#f0f0f0;border-right:3px solid #000;padding:2px 6px;">⚠️ ${it.note}</div>` : '';
     itemsRows += `
       <div style="border-bottom:1.5px dashed #000;padding:8px 0;">
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:900;">
@@ -619,10 +662,17 @@ export function generateOrderTicketHTML({ destination = 'kitchen', order = {}, r
     <div class="k-dest">${orderType} ${tableInfo}</div>
     ${roundInfo}
     <div class="k-meta">
-      <span>الوقت: ${timeStr}</span>
-      <span>المسؤول: ${order.cashier || order.waiter || 'الكاشير'}</span>
+      ${cfg.showRoundTime !== false ? `<span>الوقت: ${timeStr}</span>` : '<span></span>'}
+      ${cfg.showRoundServer !== false ? `<span>المسؤول: ${order.cashier || order.waiter || 'الكاشير'}</span>` : '<span></span>'}
     </div>
   </div>
+
+  ${(commentText && cfg.showRoundComment !== false) ? `
+    <div style="background:#111827;color:#fff;border-radius:4px;padding:6px 10px;margin-bottom:8px;text-align:right;">
+      <div style="font-size:12px;font-weight:900;color:#fde047;">⚠️ ${cfg.roundCommentLabel || 'ملاحظات تجهيز الـ Round:'}</div>
+      <div style="font-size:14px;font-weight:800;margin-top:2px;">${commentText}</div>
+    </div>
+  ` : ''}
 
   <div class="k-items">
     ${itemsRows}
@@ -637,22 +687,24 @@ export function generateOrderTicketHTML({ destination = 'kitchen', order = {}, r
 }
 
 // توليد كود HTML الكامل لبون تشغيل المطبخ (بدون أسعار، بخطوط عريضة وملاحظات مميزة)
-export function generateKitchenTicketHTML(order, round = null, items = null) {
+export function generateKitchenTicketHTML(order, round = null, items = null, roundComment = '') {
   return generateOrderTicketHTML({
     destination: 'kitchen',
     order,
     round,
-    items: items || order.items
+    items: items || order.items,
+    roundComment: roundComment || order.roundComment || order.comment
   });
 }
 
 // توليد كود HTML لبون تشغيل البار والمشروبات (بدون أسعار، مخصص لقسم المشروبات)
-export function generateBarTicketHTML(order, round = null, items = null) {
+export function generateBarTicketHTML(order, round = null, items = null, roundComment = '') {
   return generateOrderTicketHTML({
     destination: 'bar',
     order,
     round,
-    items: items || order.items
+    items: items || order.items,
+    roundComment: roundComment || order.roundComment || order.comment
   });
 }
 
@@ -695,22 +747,24 @@ function printTicketViaIframe(iframeId, html) {
 }
 
 // طباعة بون المطبخ مباشرة عبر طابعة المطبخ
-export async function printKitchenTicket(order, round = null, items = null) {
-  const html = generateKitchenTicketHTML(order, round, items);
+export async function printKitchenTicket(order, round = null, items = null, roundComment = '') {
+  const html = generateKitchenTicketHTML(order, round, items, roundComment);
   return printTicketViaIframe('thermal-kitchen-printer-iframe', html);
 }
 
 // طباعة بون البار مباشرة عبر طابعة البار والمشروبات
-export async function printBarTicket(order, round = null, items = null) {
-  const html = generateBarTicketHTML(order, round, items);
+export async function printBarTicket(order, round = null, items = null, roundComment = '') {
+  const html = generateBarTicketHTML(order, round, items, roundComment);
   return printTicketViaIframe('thermal-bar-printer-iframe', html);
 }
 
 // التوجيه التلقائي لبونات المطبخ والبار عند إرسال Round أو طلب جديد:
 // يفصل بنود الطعام عن بنود المشروبات ويطبع لكل منهما بون تشغيل منفصل فوراً وبدون أسعار!
-export async function routeAndPrintRoundTickets({ order = {}, round = null, items = [], categories = [] } = {}) {
+export async function routeAndPrintRoundTickets({ order = {}, round = null, items = [], categories = [], roundComment = '' } = {}) {
   const allItems = (items && items.length > 0) ? items : (order.items || []);
   if (!allItems || allItems.length === 0) return { foodCount: 0, drinksCount: 0 };
+
+  const finalComment = roundComment || order.roundComment || order.comment || '';
 
   const foodItems = [];
   const barItems = [];
@@ -738,7 +792,7 @@ export async function routeAndPrintRoundTickets({ order = {}, round = null, item
   // طباعة بون المطبخ إذا وُجد طعام
   if (foodItems.length > 0) {
     try {
-      await printKitchenTicket(order, round, foodItems);
+      await printKitchenTicket(order, round, foodItems, finalComment);
     } catch (err) {
       console.warn('Kitchen ticket print warning:', err);
     }
@@ -750,7 +804,7 @@ export async function routeAndPrintRoundTickets({ order = {}, round = null, item
       // إعطاء فاصل زمني 300 مللي ثانية بين طباعة المطبخ والبار
       setTimeout(async () => {
         try {
-          await printBarTicket(order, round, barItems);
+          await printBarTicket(order, round, barItems, finalComment);
         } catch (err) {
           console.warn('Bar ticket print warning:', err);
         }
