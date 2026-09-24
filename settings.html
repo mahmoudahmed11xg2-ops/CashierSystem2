@@ -531,16 +531,54 @@ body {
       </form>
     </div>
 
-    <!-- CARD 3: BACKUP & RESTORE -->
-    <div class="settings-card">
-      <div class="card-header">
-        <div class="card-title">النسخ الاحتياطي واستعادة البيانات</div>
-        <div class="card-desc">تصدير قاعدة بيانات النظام محلياً بصيغة JSON أو استيراد نسخة سابقة</div>
+    <!-- CARD 3: LOCAL STORAGE BACKUP VAULT (/data/backups) — مخزن النسخ الاحتياطية المحلي -->
+    <div class="settings-card" style="border-color:#cbd5e1;">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div class="card-title" style="display:flex;align-items:center;gap:8px;">
+            <span>🗄️ مخزن النسخ الاحتياطية المحلي (Local Backup Vault)</span>
+            <span id="vaultBackupsCountBadge" style="font-size:12px;background:#e2e8f0;color:#334155;padding:2px 8px;border-radius:12px;font-weight:700;">0 نسخ</span>
+          </div>
+          <div class="card-desc">
+            مخزن محلي ثابت داخل مجلد <code>/data/backups</code> يُحفظ فيه snapshot كامل لكافة بيانات النظام وأصنافه وسجلاته كنسخة أمان بدون أي مزامنة خارجية مع إمكانية المعاينة، الاستعادة، والتحميل.
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button type="button" class="btn-primary" style="padding:7px 14px;font-size:13px;" onclick="createNewVaultBackup()">
+            ➕ إنشاء نسخة احتياطية الآن بالمخزن
+          </button>
+          <button type="button" class="btn-secondary" style="padding:7px 12px;font-size:13px;" onclick="loadVaultBackupsList()" title="تحديث القائمة">
+            🔄 تحديث
+          </button>
+        </div>
       </div>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-        <button class="btn-secondary" onclick="exportBackupData()">تصدير نسخة احتياطية (Download JSON)</button>
-        <label class="btn-secondary" style="margin:0;cursor:pointer;">
-          استيراد نسخة سابقة (Restore JSON)
+
+      <!-- حقل إضافة ملاحظة للنسخة -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;">🏷️ اسم أو وصف للنسخة الجديدة (اختياري):</span>
+        <input type="text" id="vaultBackupNoteInp" placeholder="مثال: قبل جرد الشهر، أو بعد تعديل الأسعار" style="flex:1;min-width:200px;padding:6px 10px;font-size:13px;border:1px solid var(--border-strong);border-radius:var(--radius);" />
+        <button type="button" class="btn-secondary" style="font-weight:700;padding:6px 14px;font-size:12.5px;" onclick="createNewVaultBackup()">حفظ في المخزن 💾</button>
+      </div>
+
+      <!-- جدول / قائمة النسخ الاحتياطية الموجودة في المخزن -->
+      <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:#ffffff;margin-bottom:14px;">
+        <div style="padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:12.5px;font-weight:800;color:var(--text);display:flex;justify-content:space-between;align-items:center;">
+          <span>📂 ملفات النسخ المحفوظة داخل المجلد (/data/backups):</span>
+          <span style="font-size:11px;color:var(--text-muted);font-weight:normal;">بيانات محلية آمنة 100% بدون أي مزامنة سحابية</span>
+        </div>
+        <div id="vaultBackupsListContainer" style="max-height:260px;overflow-y:auto;">
+          <div style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px;">
+            جاري فحص مخزن النسخ الاحتياطية...
+          </div>
+        </div>
+      </div>
+
+      <!-- خيارات التصدير والاستيراد اليدوي -->
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--border);">
+        <span style="font-size:12px;font-weight:700;color:var(--text-muted);">تحكم إضافي:</span>
+        <button type="button" class="btn-secondary" style="font-size:12px;padding:6px 12px;" onclick="exportBackupData()">⬇️ تنزيل نسخة JSON على جهازك</button>
+        <label class="btn-secondary" style="margin:0;cursor:pointer;font-size:12px;padding:6px 12px;">
+          ⬆️ استيراد ملف JSON خارجي
           <input type="file" id="restoreFileInp" accept=".json" style="display:none;" onchange="importBackupData(event)" />
         </label>
       </div>
@@ -1001,6 +1039,155 @@ window.testDirectUSBPrinter = async function() {
   }
 };
 
+// ============================================================
+// 🗄️ مخزن النسخ الاحتياطية المحلي (/data/backups) — Vault Functions
+// ============================================================
+window.loadVaultBackupsList = async function() {
+  const container = document.getElementById('vaultBackupsListContainer');
+  const countBadge = document.getElementById('vaultBackupsCountBadge');
+  if (!container) return;
+
+  try {
+    const res = await fetch('/api/backups/list');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'فشل جلب قائمة النسخ الاحتياطية');
+
+    const backups = data.backups || [];
+    if (countBadge) countBadge.textContent = `${backups.length} نسخ`;
+
+    if (backups.length === 0) {
+      container.innerHTML = `
+        <div style="text-align:center;padding:26px 14px;color:var(--text-muted);font-size:13px;">
+          🗄️ لا توجد نسخ احتياطية محفوظة حالياً في المخزن (/data/backups).<br>
+          <span style="font-size:12px;color:#64748b;">اضغط على زر "إنشاء نسخة احتياطية الآن بالمخزن" أعلاه لإنشاء أول نسخة.</span>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;text-align:right;">
+        <thead>
+          <tr style="background:#f1f5f9;border-bottom:1px solid var(--border);color:var(--text-muted);">
+            <th style="padding:8px 12px;">اسم الملف</th>
+            <th style="padding:8px 12px;">تاريخ الإنشاء</th>
+            <th style="padding:8px 12px;">الحجم</th>
+            <th style="padding:8px 12px;text-align:center;">إجراءات التحكم</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${backups.map(b => `
+            <tr style="border-bottom:1px solid #f1f5f9;transition:background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+              <td style="padding:10px 12px;font-family:monospace;direction:ltr;text-align:left;color:var(--primary);font-weight:700;">
+                📄 ${b.filename}
+              </td>
+              <td style="padding:10px 12px;color:var(--text);">${b.createdDate}</td>
+              <td style="padding:10px 12px;color:var(--text-muted);direction:ltr;text-align:right;">${b.sizeFormatted}</td>
+              <td style="padding:10px 12px;text-align:center;white-space:nowrap;">
+                <button type="button" class="btn-secondary" style="padding:4px 8px;font-size:11px;font-weight:700;margin-left:4px;background:#ecfdf5;border-color:#a7f3d0;color:#065f46;" onclick="restoreVaultBackup('${b.filename}')" title="استعادة هذه النسخة إلى النظام">
+                  🔄 استعادة
+                </button>
+                <a href="/api/backups/download/${encodeURIComponent(b.filename)}" class="btn-secondary" style="padding:4px 8px;font-size:11px;text-decoration:none;display:inline-block;margin-left:4px;" title="تنزيل الملف على الكمبيوتر">
+                  ⬇️ تنزيل
+                </a>
+                <button type="button" class="btn-danger" style="padding:4px 8px;font-size:11px;" onclick="deleteVaultBackup('${b.filename}')" title="حذف من المخزن">
+                  🗑️ حذف
+                </button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (err) {
+    console.error('Error fetching vault backups:', err);
+    container.innerHTML = `
+      <div style="text-align:center;padding:20px;color:var(--red);font-size:13px;">
+        تعذر الاتصال بالمخزن المحلي: ${err.message}
+      </div>
+    `;
+  }
+};
+
+window.createNewVaultBackup = async function() {
+  const noteInp = document.getElementById('vaultBackupNoteInp');
+  const note = noteInp ? noteInp.value.trim() : '';
+
+  // جمع كافة بيانات localStorage لضمان شمول كل بيانات الـ POS
+  const localSnapshot = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith('cs_')) {
+      try {
+        localSnapshot[key] = JSON.parse(localStorage.getItem(key));
+      } catch(e) {
+        localSnapshot[key] = localStorage.getItem(key);
+      }
+    }
+  }
+
+  showToast('جاري إنشاء وحفظ النسخة الاحتياطية في المخزن /data/backups...');
+  try {
+    const res = await fetch('/api/backups/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'فشل حفظ النسخة في المخزن');
+
+    if (noteInp) noteInp.value = '';
+    showToast(`✅ تم حفظ النسخة الاحتياطية بنجاح (${data.filename})`);
+    loadVaultBackupsList();
+  } catch (err) {
+    alert(`❌ خطأ أثناء حفظ النسخة في المخزن: ${err.message}`);
+  }
+};
+
+window.restoreVaultBackup = async function(filename) {
+  const ok = confirm(`هل أنت متأكد من استعادة النسخة الاحتياطية (${filename})؟\n\nتنبيه: سيتم استبدال البيانات الحالية بالبيانات الموجودة في هذا الملف.`);
+  if (!ok) return;
+
+  showToast(`جاري استعادة البيانات من النسخة (${filename})...`);
+  try {
+    const res = await fetch(`/api/backups/restore/${encodeURIComponent(filename)}`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'فشل استعادة النسخة الاحتياطية');
+
+    showToast(`✅ تم استعادة البيانات بنجاح (${data.restoredCount} مجالات). جاري إعادة تحميل الصفحة...`);
+    setTimeout(() => {
+      window.location.reload();
+    }, 1200);
+  } catch (err) {
+    alert(`❌ خطأ أثناء استعادة النسخة: ${err.message}`);
+  }
+};
+
+window.deleteVaultBackup = async function(filename) {
+  const ok = confirm(`هل أنت متأكد من حذف النسخة الاحتياطية (${filename}) من المخزن نهائياً؟`);
+  if (!ok) return;
+
+  try {
+    const res = await fetch(`/api/backups/delete/${encodeURIComponent(filename)}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'فشل حذف الملف');
+
+    showToast(`🗑️ تم حذف النسخة الاحتياطية بنجاح`);
+    loadVaultBackupsList();
+  } catch (err) {
+    alert(`❌ خطأ أثناء الحذف: ${err.message}`);
+  }
+};
+
+// تحميل قائمة المخزن فور تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(window.loadVaultBackupsList, 150);
+});
+
 // Backup Export
 window.exportBackupData = function() {
   const data = {};
@@ -1027,7 +1214,7 @@ window.importBackupData = function(e) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = function(evt) {
+  reader.onload = async function(evt) {
     try {
       const data = JSON.parse(evt.target.result);
       if (typeof data !== 'object') throw new Error('تنسيق الملف غير صالح');
@@ -1037,6 +1224,15 @@ window.importBackupData = function(e) {
           localStorage.setItem(k, data[k]);
         }
       }
+
+      // إرسال للسيرفر لحفظ نسخة تلقائية في المخزن
+      try {
+        await fetch('/api/backup/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch(e) {}
 
       showToast('تمت استعادة البيانات بنجاح، جاري إعادة التحميل...');
       setTimeout(() => window.location.reload(), 1200);

@@ -128,6 +128,154 @@ async function startServer() {
     }
   });
 
+  // -------------------------------------------------------------
+  // Backup Vault Management (/data/backups) — مخزن النسخ الاحتياطية
+  // -------------------------------------------------------------
+  const BACKUP_DIR = path.join(process.cwd(), 'data', 'backups');
+  if (!fs.existsSync(BACKUP_DIR)) {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  }
+
+  // جمع كافة بيانات النظام
+  function collectAllDataSnapshot() {
+    const snapshot: Record<string, any> = {};
+    for (const key of Object.keys(DOMAIN_FILES)) {
+      snapshot[key] = readDomainFile(key);
+    }
+    return snapshot;
+  }
+
+  // قائمة النسخ الاحتياطية في المخزن
+  app.get('/api/backups/list', (req, res) => {
+    try {
+      if (!fs.existsSync(BACKUP_DIR)) {
+        return res.json({ ok: true, backups: [] });
+      }
+      const files = fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith('.json'));
+      const list = files.map(filename => {
+        const fullPath = path.join(BACKUP_DIR, filename);
+        const stats = fs.statSync(fullPath);
+        return {
+          filename,
+          sizeBytes: stats.size,
+          sizeFormatted: (stats.size / 1024).toFixed(1) + ' KB',
+          createdAt: stats.mtime.toISOString(),
+          createdDate: stats.mtime.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })
+        };
+      });
+      // ترتيب تنازلي حسب الأحدث
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      res.json({ ok: true, backups: list });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // إنشاء وحفظ نسخة احتياطية جديدة داخل فولدر المخزن /data/backups
+  app.post('/api/backups/create', (req, res) => {
+    try {
+      const { note, customData } = req.body || {};
+      const dataToSave = (customData && typeof customData === 'object' && Object.keys(customData).length > 0)
+        ? customData
+        : collectAllDataSnapshot();
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const cleanNote = note ? `_${String(note).trim().replace(/[^a-zA-Z0-9_\-\u0600-\u06FF]/g, '_')}` : '';
+      const filename = `backup_${timestamp}${cleanNote}.json`;
+      const fullPath = path.join(BACKUP_DIR, filename);
+
+      const payload = {
+        meta: {
+          app: 'CashierSystem',
+          type: 'local_storage_vault_backup',
+          timestamp: new Date().toISOString(),
+          note: note || '',
+          domainsCount: Object.keys(dataToSave).length
+        },
+        data: dataToSave
+      };
+
+      fs.writeFileSync(fullPath, JSON.stringify(payload, null, 2), 'utf-8');
+      const stats = fs.statSync(fullPath);
+
+      res.json({
+        ok: true,
+        message: 'تم حفظ النسخة الاحتياطية في مجلد المخزن بنجاح',
+        filename,
+        sizeFormatted: (stats.size / 1024).toFixed(1) + ' KB',
+        createdAt: stats.mtime.toISOString()
+      });
+    } catch (err: any) {
+      console.error('[Server] Create backup error:', err);
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // تحميل أو فحص ملف نسخة احتياطية محدد
+  app.get('/api/backups/download/:filename', (req, res) => {
+    try {
+      const filename = path.basename(req.params.filename);
+      const fullPath = path.join(BACKUP_DIR, filename);
+      if (!fs.existsSync(fullPath)) {
+        return res.status(404).json({ ok: false, error: 'الملف غير موجود' });
+      }
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'application/json');
+      fs.createReadStream(fullPath).pipe(res);
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // استعادة البيانات من نسخة محددة في المخزن
+  app.post('/api/backups/restore/:filename', (req, res) => {
+    try {
+      const filename = path.basename(req.params.filename);
+      const fullPath = path.join(BACKUP_DIR, filename);
+      if (!fs.existsSync(fullPath)) {
+        return res.status(404).json({ ok: false, error: 'ملف النسخة الاحتياطية غير موجود' });
+      }
+
+      const raw = fs.readFileSync(fullPath, 'utf-8');
+      const parsed = JSON.parse(raw);
+      const data = parsed.data || parsed; // يدعم الملفات سواء كانت مغلفة بـ meta/data أو مباشرة
+
+      let restoredCount = 0;
+      for (const [key, value] of Object.entries(data)) {
+        if (DOMAIN_FILES[key]) {
+          writeDomainFile(key, value);
+          restoredCount++;
+        }
+      }
+
+      io.emit('cs:reload');
+      res.json({
+        ok: true,
+        message: `تم استعادة البيانات بنجاح (${restoredCount} مجالات)`,
+        restoredCount,
+        source: filename
+      });
+    } catch (err: any) {
+      console.error('[Server] Restore backup error:', err);
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // حذف نسخة احتياطية محددة من المخزن
+  app.delete('/api/backups/delete/:filename', (req, res) => {
+    try {
+      const filename = path.basename(req.params.filename);
+      const fullPath = path.join(BACKUP_DIR, filename);
+      if (!fs.existsSync(fullPath)) {
+        return res.status(404).json({ ok: false, error: 'الملف غير موجود بالفعل' });
+      }
+      fs.unlinkSync(fullPath);
+      res.json({ ok: true, message: `تم حذف النسخة (${filename}) بنجاح`, filename });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   // Backup Export
   app.get('/api/backup/export', (req, res) => {
     const backup: Record<string, any> = {};
@@ -145,8 +293,9 @@ async function startServer() {
     if (!backup || typeof backup !== 'object') {
       return res.status(400).json({ error: 'Invalid backup payload' });
     }
+    const data = backup.data || backup;
     let restoredCount = 0;
-    for (const [key, value] of Object.entries(backup)) {
+    for (const [key, value] of Object.entries(data)) {
       if (DOMAIN_FILES[key]) {
         writeDomainFile(key, value);
         restoredCount++;

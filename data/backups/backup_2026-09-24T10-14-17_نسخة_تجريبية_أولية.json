@@ -1,10 +1,10 @@
 {
   "meta": {
-    "createdAt": "2026-09-24T02:12:33.197Z",
-    "timestamp": 1790215953197,
-    "note": "نسخة احتياطية أولية عند بدء النظام",
-    "domainsCount": 15,
-    "version": "2.0.0"
+    "app": "CashierSystem",
+    "type": "local_storage_vault_backup",
+    "timestamp": "2026-09-24T10:14:17.755Z",
+    "note": "نسخة_تجريبية_أولية",
+    "domainsCount": 15
   },
   "data": {
     "categories": [
@@ -42,17 +42,7 @@
         "name": "ساندوتشات ووجبات سريعة"
       }
     ],
-    "items": [
-      {
-        "id": 1,
-        "name": "coffe",
-        "price": 10,
-        "catId": 3,
-        "code": "111",
-        "available": true,
-        "subCategory": "القهوة الباردة"
-      }
-    ],
+    "items": [],
     "recipes": [],
     "stock": [
       {
@@ -67,7 +57,7 @@
         "id": 2,
         "name": "شيش طاووق دجاج متبل",
         "unit": "كجم",
-        "qty": 22.9,
+        "qty": 25,
         "min": 5,
         "cost": 160
       },
@@ -75,7 +65,7 @@
         "id": 3,
         "name": "دجاج كامل طازج للشوي",
         "unit": "قطعة",
-        "qty": 39,
+        "qty": 40,
         "min": 10,
         "cost": 75
       },
@@ -83,7 +73,7 @@
         "id": 4,
         "name": "أرز بسمتي هندي درجة أولى",
         "unit": "كجم",
-        "qty": 49.8,
+        "qty": 50,
         "min": 10,
         "cost": 65
       },
@@ -107,7 +97,7 @@
         "id": 7,
         "name": "بن إسبريسو حبوب محمص (100% أرابيكا)",
         "unit": "كجم",
-        "qty": 14.96,
+        "qty": 15,
         "min": 3,
         "cost": 320
       },
@@ -178,8 +168,7 @@
         "currentSession": null,
         "reservation": null,
         "total": 0,
-        "waiter": "—",
-        "items": []
+        "waiter": "—"
       },
       {
         "id": 2,
@@ -343,12 +332,21 @@
     "expenses": [
       {
         "id": 101,
-        "amount": 92,
-        "category": "أخرى",
-        "reason": "محمد",
-        "recipient": "محمود احمد",
-        "cashier": "mahmoud.mostfa",
-        "createdAt": "2026-09-24T00:04:29.174Z"
+        "amount": 120,
+        "category": "مشتريات طارئة",
+        "reason": "شراء أطباق فويل وكرتون تغليف إضافي",
+        "recipient": "عامل التوريدات",
+        "cashier": "أحمد الإداري",
+        "createdAt": "2026-09-13T09:00:00.000Z"
+      },
+      {
+        "id": 102,
+        "amount": 80,
+        "category": "صيانة وتشغيل",
+        "reason": "تغيير لمبة إضاءة المطبخ ومفتاح كهرباء",
+        "recipient": "فني الصيانة",
+        "cashier": "أحمد الإداري",
+        "createdAt": "2026-09-13T10:30:00.000Z"
       }
     ],
     "guardLogs": [
@@ -369,158 +367,9 @@
         "action": "طلب أوفيسير",
         "details": "إصدار طلب ضيافة موظفين معفى من الدفع بقيمة 110 ج",
         "value": 110
-      },
-      {
-        "id": "log-1790203702550",
-        "timestamp": "2026-09-23T22:48:22.550Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "تصفير مبيعات",
-        "details": "قام المالك بتصفير سجلات المبيعات والورديات وسندات الصرف من الإعدادات",
-        "value": 0
-      },
-      {
-        "id": "1790207703211rbxc7",
-        "timestamp": "2026-09-23T23:55:03.211Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "بدء وردية",
-        "details": "تم فتح وردية جديدة للكاشير (Mahmoud Mostafa) برصيد افتتاح 0 ج",
-        "value": 0
-      },
-      {
-        "id": "1790207877738mxpch",
-        "timestamp": "2026-09-23T23:57:57.738Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "إغلاق ودفع طاولة",
-        "details": "تم إغلاق ودفع حساب طاولة 1 بإجمالي 310 ج",
-        "value": 310
-      },
-      {
-        "id": "1790208183925kwi8j",
-        "timestamp": "2026-09-24T00:03:03.925Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "فاتورة مبيعات",
-        "details": "تم إصدار وسداد الفاتورة #3 بقيمة 42 ج",
-        "value": 42
-      },
-      {
-        "id": "17902082098095vl1p",
-        "timestamp": "2026-09-24T00:03:29.809Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "فاتورة مبيعات",
-        "details": "تم إصدار وسداد الفاتورة #4 بقيمة 90 ج",
-        "value": 90
-      },
-      {
-        "id": "17902082919529qrhc",
-        "timestamp": "2026-09-24T00:04:51.952Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "فاتورة مبيعات",
-        "details": "تم إصدار وسداد الفاتورة #5 بقيمة 100 ج",
-        "value": 100
-      },
-      {
-        "id": "1790208549542ywfg8",
-        "timestamp": "2026-09-24T00:09:09.542Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "بدء وردية",
-        "details": "تم فتح وردية جديدة للكاشير (Mahmoud Mostafa) برصيد افتتاح 0 ج",
-        "value": 0
-      },
-      {
-        "id": "1790209372000sdv8o",
-        "timestamp": "2026-09-24T00:22:52.000Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "حذف فاتورة",
-        "details": "تم حذف الفاتورة #1 نهائياً بقيمة 310 ج",
-        "value": 310
-      },
-      {
-        "id": "1790209373202aldv7",
-        "timestamp": "2026-09-24T00:22:53.202Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "حذف فاتورة",
-        "details": "تم حذف الفاتورة #2 نهائياً بقيمة 150 ج",
-        "value": 150
-      },
-      {
-        "id": "1790209373860ztpeh",
-        "timestamp": "2026-09-24T00:22:53.860Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "حذف فاتورة",
-        "details": "تم حذف الفاتورة #3 نهائياً بقيمة 42 ج",
-        "value": 42
-      },
-      {
-        "id": "1790209373884wmdth",
-        "timestamp": "2026-09-24T00:22:53.884Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "حذف فاتورة",
-        "details": "تم حذف الفاتورة #4 نهائياً بقيمة 90 ج",
-        "value": 90
-      },
-      {
-        "id": "17902093741733so5s",
-        "timestamp": "2026-09-24T00:22:54.173Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "حذف فاتورة",
-        "details": "تم حذف الفاتورة #5 نهائياً بقيمة 100 ج",
-        "value": 100
-      },
-      {
-        "id": "1790209375374gsf40",
-        "timestamp": "2026-09-24T00:22:55.374Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "حذف فاتورة",
-        "details": "تم حذف الفاتورة #6 نهائياً بقيمة 75 ج",
-        "value": 75
-      },
-      {
-        "id": "1790210473295osdb4",
-        "timestamp": "2026-09-24T00:41:13.295Z",
-        "user": "mahmoud.mostfa",
-        "role": "admin",
-        "action": "ADD_MENU_ITEM",
-        "details": "إضافة صنف جديد بالمنيو: coffe (القهوة الباردة) بسعر 10 ج",
-        "value": 10
       }
     ],
-    "shiftsLog": [
-      {
-        "id": 1,
-        "openedAt": "٠٢:٥٥ ص ٢٤‏/٩‏/٢٠٢٦",
-        "closedAt": "٠٣:٠٧ ص ٢٤‏/٩‏/٢٠٢٦",
-        "openingBalance": 0,
-        "cashSales": 592,
-        "expectedTotal": 500,
-        "actualDrawer": 500,
-        "difference": 0,
-        "cashierName": "Mahmoud Mostafa"
-      },
-      {
-        "id": 2,
-        "openedAt": "٠٣:٠٩ ص ٢٤‏/٩‏/٢٠٢٦",
-        "closedAt": "٠٣:٤١ ص ٢٤‏/٩‏/٢٠٢٦",
-        "openingBalance": 0,
-        "cashSales": 0,
-        "expectedTotal": 0,
-        "actualDrawer": 0,
-        "difference": 0,
-        "cashierName": "Mahmoud Mostafa"
-      }
-    ],
+    "shiftsLog": [],
     "activeShift": null
   }
 }
