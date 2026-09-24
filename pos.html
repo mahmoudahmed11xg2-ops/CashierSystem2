@@ -499,6 +499,18 @@ body {
 <!-- POS BODY -->
 <div class="pos-body">
 
+  <!-- NO SHIFT WARNING BANNER -->
+  <div id="noShiftWarningBanner" style="display:none;background:#fef2f2;border:1.5px solid #f87171;color:#991b1b;padding:10px 16px;margin:8px 12px;border-radius:var(--radius);font-weight:700;justify-content:space-between;align-items:center;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:18px;">⚠️</span>
+      <div>
+        <div style="font-size:13px;">تنبيه الوردية: لم يتم فتح وبدء وردية عمل في الدرج بعد!</div>
+        <div style="font-size:11.5px;color:#7f1d1d;font-weight:500;">يجب فتح الوردية وتحديد رصيد بداية الدرج قبل تسجيل الطلبات والمبيعات.</div>
+      </div>
+    </div>
+    <button type="button" class="btn-top" style="background:#dc2626;color:#fff;border:none;padding:6px 14px;font-size:12px;cursor:pointer;border-radius:4px;font-weight:700;" onclick="openStartShiftFromPOSModal()">بدء الوردية والدرج الآن ↵</button>
+  </div>
+
   <!-- MENU COLUMN -->
   <div class="menu-col">
     <div class="menu-controls">
@@ -513,6 +525,10 @@ body {
       </div>
       <div class="cats-bar" id="catsBar">
         <!-- Injected by JS -->
+      </div>
+      <!-- SUBCATEGORIES FOR DRINKS -->
+      <div class="subcats-bar" id="subCatsBar" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);gap:6px;overflow-x:auto;white-space:nowrap;padding-bottom:4px;">
+        <!-- Injected by JS when Drinks is selected -->
       </div>
     </div>
 
@@ -698,11 +714,28 @@ body {
           <span style="font-size:11px;color:var(--text-muted);">مثل: مشويات، ساندوتشات، مشروبات...</span>
         </div>
         <div style="display:flex;gap:6px;">
-          <select id="dishCategory" style="flex:1;" required>
+          <select id="dishCategory" style="flex:1;" required onchange="handleDishCatChange(this.value)">
             <!-- Injected dynamically -->
           </select>
           <button type="button" class="btn-top" onclick="promptAddNewCategory()" title="إضافة قسم منيو جديد" style="padding:4px 10px;font-size:12px;background:var(--primary);color:#fff;border:none;">+ قسم جديد</button>
         </div>
+      </div>
+
+      <div class="form-group" id="dishSubCategoryGroup" style="display:none;">
+        <label>التصنيف الفرعي للمشروبات *</label>
+        <select id="dishSubCategory">
+          <option value="القهوة الباردة">القهوة الباردة</option>
+          <option value="القهوة المميزة">القهوة المميزة</option>
+          <option value="الشاي">الشاي</option>
+          <option value="الإسبريسو">الإسبريسو</option>
+          <option value="الإضافات">الإضافات</option>
+          <option value="مشروبات مخفوقة">مشروبات مخفوقة</option>
+          <option value="موكتيلات">موكتيلات</option>
+          <option value="بوبا شاي">بوبا شاي</option>
+          <option value="ميلك شيك">ميلك شيك</option>
+          <option value="مشروبات غازية">مشروبات غازية</option>
+          <option value="عصائر طازجة">عصائر طازجة</option>
+        </select>
       </div>
 
       <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-top:8px;">
@@ -716,6 +749,33 @@ body {
           <button type="button" class="btn-action-secondary" onclick="closeModal('addDishModal')">إلغاء</button>
           <button type="submit" class="btn-action-primary" style="padding:8px 18px;">حفظ وإضافة للمنيو</button>
         </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: START SHIFT FROM POS -->
+<div class="overlay" id="startShiftFromPOSModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <span class="modal-title">بدء وفتح وردية العمل في الدرج</span>
+      <button class="modal-close" onclick="closeModal('startShiftFromPOSModal')">✕</button>
+    </div>
+    <form onsubmit="handleStartShiftFromPOS(event)">
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:10px 12px;font-size:12px;color:#1e40af;margin-bottom:12px;line-height:1.5;">
+        ⚠️ <strong>تنبيه إداري:</strong> يشترط نظام الكاشير بدء الوردية أولاً لتحديد رصيد الدرج الافتتاحي وربط الفواتير والمصروفات بجرد نهاية الوردية بدقة.
+      </div>
+      <div class="form-group">
+        <label>اسم الكاشير المستلم للوردية</label>
+        <input type="text" id="posShiftCashierName" readonly style="background:#f8fafc;" />
+      </div>
+      <div class="form-group">
+        <label>رصيد بداية الدرج (الفكة / العهدة النقدية) بالجنيه *</label>
+        <input type="number" id="posOpeningBalanceInput" value="500" step="10" min="0" required placeholder="500" />
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button type="button" class="btn-action-secondary" onclick="closeModal('startShiftFromPOSModal')">إلغاء</button>
+        <button type="submit" class="btn-action-primary" style="background:#16a34a;padding:8px 18px;">تأكيد فتح الوردية وبدء العمل ✓</button>
       </div>
     </form>
   </div>
@@ -750,10 +810,10 @@ import AuthService, { TableManager, TABLE_STATUS, TABLE_STATUS_LABELS } from './
 import DataService from './js/dataService.js';
 import ThermalPrinter from './js/thermalPrinter.js';
 
-// تحميل بيانات الأقسام والأصناف والطيارين والطاولات من data/ وزرعها في الكاش المحلي
-await DataService.init(['categories', 'items', 'orders', 'stock', 'recipes', 'guardLogs', 'captains', 'tables']);
+// تحميل بيانات الأقسام والأصناف والطيارين والطاولات والوردية من data/ وزرعها في الكاش المحلي
+await DataService.init(['categories', 'items', 'orders', 'stock', 'recipes', 'guardLogs', 'captains', 'tables', 'activeShift']);
 
-// الاستماع الفوري الحي لتحديثات الطاولات والأصناف والمخزون من الصفحات الأخرى عبر شبكة المزامنة
+// الاستماع الفوري الحي لتحديثات الطاولات والأصناف والمخزون والورديات من الصفحات الأخرى عبر شبكة المزامنة
 DataService.on(['tables'], () => {
   buildTableSelector();
   if (selectedTable) {
@@ -766,6 +826,9 @@ DataService.on(['categories', 'items'], () => {
 });
 DataService.on(['stock', 'recipes'], () => {
   buildItemsGrid();
+});
+DataService.on(['activeShift'], () => {
+  updateShiftWarningBanner();
 });
 
 // تهيئة قناة بث شاشة العميل التفاعلية
@@ -851,12 +914,79 @@ let payMethod = 'cash';
 // لسه هو نفسه، فباقي الكود في الصفحة دي مش محتاج يتغير.
 
 // -------------------------------------------------------------
+// Shift Enforcement & Quick POS Start
+// -------------------------------------------------------------
+function checkActiveShiftForAction(actionName = 'تسجيل طلب') {
+  const activeShift = DataService.get('activeShift') || JSON.parse(localStorage.getItem('cs_active_shift') || 'null');
+  if (!activeShift || !activeShift.cashierName) {
+    showShiftRequiredWarning(actionName);
+    return false;
+  }
+  return true;
+}
+
+function showShiftRequiredWarning(actionName) {
+  const s = AuthService.getSession();
+  const cName = s ? (s.fullName || s.name || s.username) : 'كاشير المناوبة';
+  const inpName = document.getElementById('posShiftCashierName');
+  if (inpName) inpName.value = cName;
+  const inpBal = document.getElementById('posOpeningBalanceInput');
+  if (inpBal) inpBal.value = '500';
+  openModal('startShiftFromPOSModal');
+  showToast(`⚠️ تنبيه: لا يمكن ${actionName} بدون فتح الوردية وتحديد رصيد الدرج أولاً!`);
+}
+
+window.openStartShiftFromPOSModal = function() {
+  const s = AuthService.getSession();
+  const cName = s ? (s.fullName || s.name || s.username) : 'كاشير المناوبة';
+  const inpName = document.getElementById('posShiftCashierName');
+  if (inpName) inpName.value = cName;
+  const inpBal = document.getElementById('posOpeningBalanceInput');
+  if (inpBal) inpBal.value = '500';
+  openModal('startShiftFromPOSModal');
+};
+
+window.handleStartShiftFromPOS = function(e) {
+  e.preventDefault();
+  const s = AuthService.getSession();
+  const opening = parseFloat(document.getElementById('posOpeningBalanceInput').value) || 0;
+  const cName = document.getElementById('posShiftCashierName').value || (s ? (s.fullName || s.name || s.username) : 'كاشير');
+
+  const newShift = {
+    id: Date.now(),
+    cashierName: cName,
+    openingBalance: opening,
+    openedAt: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('ar-EG'),
+    openedAtRaw: new Date().toISOString()
+  };
+
+  DataService.set('activeShift', newShift);
+  DB.logGuardEvent('بدء وردية', `تم فتح وردية جديدة للكاشير (${cName}) برصيد افتتاح ${opening} ج`, opening);
+  closeModal('startShiftFromPOSModal');
+  updateShiftWarningBanner();
+  showToast('✅ تم فتح الوردية وتعيين رصيد الدرج بنجاح، يمكنك الآن تسجيل الطلبات!');
+};
+
+function updateShiftWarningBanner() {
+  const activeShift = DataService.get('activeShift') || JSON.parse(localStorage.getItem('cs_active_shift') || 'null');
+  const banner = document.getElementById('noShiftWarningBanner');
+  if (banner) {
+    if (!activeShift || !activeShift.cashierName) {
+      banner.style.display = 'flex';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+}
+
+// -------------------------------------------------------------
 // Initialization & URL Params Handling
 // -------------------------------------------------------------
 function initPOS() {
   buildCatsBar();
   buildItemsGrid();
   buildTableSelector();
+  updateShiftWarningBanner();
 
   const urlParams = new URLSearchParams(window.location.search);
   const tableIdParam = urlParams.get('tableId');
@@ -1055,18 +1185,68 @@ window.handleConfirmTransferTablePOS = function(e) {
 };
 
 // -------------------------------------------------------------
-// Menu & Categories
+// Menu & Categories & Subcategories
 // -------------------------------------------------------------
+let activeSubCat = 'all';
+
+function isDrinksCategory(catId) {
+  const cats = DB.getCats();
+  const c = cats.find(x => x.id === catId || String(x.id) === String(catId));
+  return c && (c.id === 3 || String(c.name).includes('مشروبات'));
+}
+
 function buildCatsBar() {
   const cats = DB.getCats();
   const bar = document.getElementById('catsBar');
   bar.innerHTML = `<button class="cat-btn ${activeCat==='all'?'active':''}" onclick="setCat('all')">الكل</button>` +
     cats.map(c => `<button class="cat-btn ${activeCat===c.id?'active':''}" onclick="setCat(${c.id})">${c.name}</button>`).join('');
+
+  buildSubCatsBar();
+}
+
+function buildSubCatsBar() {
+  const subBar = document.getElementById('subCatsBar');
+  if (!subBar) return;
+
+  if (!isDrinksCategory(activeCat)) {
+    subBar.style.display = 'none';
+    activeSubCat = 'all';
+    return;
+  }
+
+  const drinkSubCategories = [
+    'الكل',
+    'القهوة الباردة',
+    'القهوة المميزة',
+    'الشاي',
+    'الإسبريسو',
+    'الإضافات',
+    'مشروبات مخفوقة',
+    'موكتيلات',
+    'بوبا شاي',
+    'ميلك شيك',
+    'مشروبات غازية',
+    'عصائر طازجة'
+  ];
+
+  subBar.style.display = 'flex';
+  subBar.innerHTML = drinkSubCategories.map(sc => {
+    const val = sc === 'الكل' ? 'all' : sc;
+    const isAct = activeSubCat === val;
+    return `<button class="cat-btn ${isAct ? 'active' : ''}" style="font-size:11.5px;padding:4px 12px;border-radius:14px;white-space:nowrap;" onclick="setSubCat('${val}')">${sc}</button>`;
+  }).join('');
 }
 
 window.setCat = function(id) {
   activeCat = id;
+  activeSubCat = 'all';
   buildCatsBar();
+  buildItemsGrid();
+};
+
+window.setSubCat = function(sub) {
+  activeSubCat = sub;
+  buildSubCatsBar();
   buildItemsGrid();
 };
 
@@ -1079,8 +1259,12 @@ function buildItemsGrid() {
   const search = (document.getElementById('searchInput').value || '').trim().toLowerCase();
   const filtered = items.filter(item => {
     const matchCat = activeCat === 'all' || item.catId === activeCat;
-    const matchSrch = !search || item.name.toLowerCase().includes(search) || (item.code||'').toLowerCase().includes(search);
-    return matchCat && matchSrch;
+    const matchSub = activeSubCat === 'all' || !activeSubCat || (item.subCategory && item.subCategory === activeSubCat);
+    const matchSrch = !search || 
+      item.name.toLowerCase().includes(search) || 
+      (item.code||'').toLowerCase().includes(search) || 
+      (item.subCategory||'').toLowerCase().includes(search);
+    return matchCat && matchSub && matchSrch;
   });
 
   const grid = document.getElementById('itemsGrid');
@@ -1093,10 +1277,14 @@ function buildItemsGrid() {
 
   grid.innerHTML = filtered.map(item => {
     const cat = cats.find(c => c.id === item.catId);
+    const subBadge = item.subCategory ? `<span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:8px;margin-right:4px;">${item.subCategory}</span>` : '';
     return `
       <div class="item-card ${!item.available ? 'out-of-stock':''}" onclick="addToOrder(${item.id})">
         <div>
-          <span class="item-cat-badge">${cat ? cat.name : ''}</span>
+          <div style="display:flex;align-items:center;margin-bottom:2px;">
+            <span class="item-cat-badge">${cat ? cat.name : ''}</span>
+            ${subBadge}
+          </div>
           <div class="item-name">${item.name}</div>
         </div>
         <div class="item-price">${item.price} ج</div>
@@ -1109,6 +1297,8 @@ function buildItemsGrid() {
 // Cart / Order Logic
 // -------------------------------------------------------------
 window.addToOrder = function(itemId) {
+  if (!checkActiveShiftForAction('إضافة أصناف للسلة')) return;
+
   const items = DB.getItems();
   const item = items.find(i => i.id === itemId);
   if (!item || !item.available) return;
@@ -1237,9 +1427,10 @@ window.setPayMethod = function(btn) {
 };
 
 // -------------------------------------------------------------
-// Round Management for Tables
+// Round Management for Tables & Automated Ticket Routing
 // -------------------------------------------------------------
 window.handleAddRoundToTable = function() {
+  if (!checkActiveShiftForAction('إرسال طلب Round للمطبخ والبار')) return;
   if (!selectedTable) return showToast('يرجى اختيار طاولة أولاً');
   if (order.length === 0) return showToast('يرجى اختيار أصناف أولاً لإرسالها في هذا الـ Round');
 
@@ -1254,14 +1445,35 @@ window.handleAddRoundToTable = function() {
       TableManager.openSession(selectedTable, 'عميل صالة', 'وليد صبحي صالة');
     }
 
-    TableManager.addRound(selectedTable, order, 'وليد صبحي صالة');
+    const roundRes = TableManager.addRound(selectedTable, order, 'وليد صبحي صالة');
     // خصم مكونات الوجبات من المخزون
     deductRecipeStock(order);
+
+    const roundNum = roundRes?.roundNumber || (t.currentSession?.rounds?.length || 1);
+    const session = AuthService.getSession();
+    const cashierName = session ? (session.fullName || session.name || session.username) : 'الكاشير';
+
+    // توجيه تلقائي: بون الطعام للمطبخ وبون المشروبات للبار (بدون أي أسعار إطلاقاً)
+    const cats = DB.getCats();
+    ThermalPrinter.routeAndPrintRoundTickets({
+      order: {
+        id: `T${t.number}-R${roundNum}`,
+        type: 'dine',
+        tableLabel: `طاولة ${t.number}`,
+        tableNumber: t.number,
+        waiter: t.currentSession?.waiter || 'وليد صبحي صالة',
+        cashier: cashierName,
+        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+      },
+      round: roundNum,
+      items: [...order],
+      categories: cats
+    });
 
     order = [];
     buildTableSelector();
     handleTableSelect(selectedTable);
-    showToast(`تم إرسال الطلب لطاولة ${t.number} وللمطبخ وحفظه في الجلسة بنجاح 🍽️`);
+    showToast(`تم إرسال Round #${roundNum} وطباعة بون المطبخ وبون البار تلقائياً بدون أسعار بنجاح 🖨️`);
   } catch (err) {
     showToast('خطأ: ' + err.message);
   }
@@ -1301,6 +1513,8 @@ window.openRoundsModal = function() {
 // Checkout / Settlement Actions
 // -------------------------------------------------------------
 window.handleCheckoutAction = function() {
+  if (!checkActiveShiftForAction('إتمام الدفع والفاتورة')) return;
+
   if (orderType === 'delivery') {
     if (order.length === 0) return showToast('السلة فارغة');
     
@@ -1329,8 +1543,25 @@ window.handleCheckoutAction = function() {
     if (t && t.status === TABLE_STATUS.OCCUPIED) {
       // If there are newly drafted items in cart, save as final round first
       if (order.length > 0) {
-        TableManager.addRound(selectedTable, order, 'وليد صبحي صالة');
+        const roundRes = TableManager.addRound(selectedTable, order, 'وليد صبحي صالة');
         deductRecipeStock(order);
+        const roundNum = roundRes?.roundNumber || (t.currentSession?.rounds?.length || 1);
+        const session = AuthService.getSession();
+        const cashierName = session ? (session.fullName || session.name || session.username) : 'الكاشير';
+        ThermalPrinter.routeAndPrintRoundTickets({
+          order: {
+            id: `T${t.number}-R${roundNum}`,
+            type: 'dine',
+            tableLabel: `طاولة ${t.number}`,
+            tableNumber: t.number,
+            waiter: t.currentSession?.waiter || 'وليد صبحي صالة',
+            cashier: cashierName,
+            time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+          },
+          round: roundNum,
+          items: [...order],
+          categories: DB.getCats()
+        });
         order = [];
       }
       // Settle table
@@ -1591,6 +1822,12 @@ window.promptAddNewCategory = function() {
   buildCatsBar();
 };
 
+window.handleDishCatChange = function(catId) {
+  const isDrink = isDrinksCategory(parseInt(catId));
+  const grp = document.getElementById('dishSubCategoryGroup');
+  if (grp) grp.style.display = isDrink ? 'block' : 'none';
+};
+
 window.openAddDishModal = function() {
   let cats = DB.getCats();
   if (!cats || cats.length === 0) {
@@ -1606,6 +1843,7 @@ window.openAddDishModal = function() {
   document.getElementById('dishCode').value = '';
   document.getElementById('dishAvailable').checked = true;
 
+  handleDishCatChange(cats[0]?.id || 1);
   openModal('addDishModal');
 };
 
@@ -1616,6 +1854,8 @@ window.handleSaveNewDish = function(e) {
   const catId = parseInt(document.getElementById('dishCategory').value) || 1;
   const code = (document.getElementById('dishCode').value || '').trim().toUpperCase();
   const available = document.getElementById('dishAvailable').checked;
+  const isDrink = isDrinksCategory(catId);
+  const subCategory = isDrink ? document.getElementById('dishSubCategory').value : null;
 
   if (!name || price <= 0) {
     alert('يرجى كتابة اسم الصنف وسعر بيع صحيح');
@@ -1631,13 +1871,14 @@ window.handleSaveNewDish = function(e) {
     price,
     catId,
     code: code || `M${newId}`,
-    available
+    available,
+    subCategory: subCategory || null
   };
 
   items.push(newItem);
   DataService.set('items', items);
 
-  DB.logGuardEvent('ADD_MENU_ITEM', `إضافة صنف جديد بالمنيو: ${name} بسعر ${price} ج`, price);
+  DB.logGuardEvent('ADD_MENU_ITEM', `إضافة صنف جديد بالمنيو: ${name} (${subCategory || 'بدون تصنيف فرعي'}) بسعر ${price} ج`, price);
 
   closeModal('addDishModal');
   showToast(`تمت إضافة صنف "${name}" إلى المنيو بنجاح!`);

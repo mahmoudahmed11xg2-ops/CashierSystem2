@@ -141,7 +141,7 @@ export const ROLE_HOME_PAGES = {
 };
 
 // ============================================================
-//  Default Seed Users
+//  Users Database (Clean - Only Primary Admin Accounts)
 // ============================================================
 const DEFAULT_USERS = [
   {
@@ -159,59 +159,15 @@ const DEFAULT_USERS = [
     username: 'admin',
     email: 'admin@system.local',
     fullName: 'مدير النظام (Admin)',
-    password: btoa('admin123'),
+    password: btoa('123456'),
     role: 'admin',
     active: true,
     createdAt: new Date().toISOString(),
     permissions: ['all']
-  },
-  {
-    id: 'user_om',
-    username: 'om',
-    email: 'om@system.local',
-    fullName: 'مدير العمليات (OM)',
-    password: btoa('om123'),
-    role: 'om',
-    active: true,
-    createdAt: new Date().toISOString(),
-    permissions: ['operations', 'pos', 'tables', 'inventory', 'accounts']
-  },
-  {
-    id: 'user_manager',
-    username: 'manager',
-    email: 'manager@system.local',
-    fullName: 'مدير الصالة (Manager)',
-    password: btoa('manager123'),
-    role: 'manager',
-    active: true,
-    createdAt: new Date().toISOString(),
-    permissions: ['pos', 'tables', 'delivery', 'inventory', 'crm']
-  },
-  {
-    id: 'user_cashier',
-    username: 'cashier',
-    email: 'cashier@system.local',
-    fullName: 'كاشير المناوبة (Cashier)',
-    password: btoa('cashier123'),
-    role: 'cashier',
-    active: true,
-    createdAt: new Date().toISOString(),
-    permissions: ['pos', 'tables', 'delivery']
-  },
-  {
-    id: 'user_accounts',
-    username: 'accounts',
-    email: 'accounts@system.local',
-    fullName: 'محاسب الوردية (Accounts)',
-    password: btoa('accounts123'),
-    role: 'accounts',
-    active: true,
-    createdAt: new Date().toISOString(),
-    permissions: ['orders', 'accounts', 'expenses']
   }
 ];
 
-// Seed users if empty & ensure Mahmoud Mostafa admin presence
+// Seed users if empty & purge old demo accounts as requested
 export function seedUsersIfEmpty() {
   let existing = [];
   try {
@@ -220,7 +176,10 @@ export function seedUsersIfEmpty() {
     existing = [];
   }
 
-  let modified = false;
+  // Purge old demo users (om, manager, cashier, accounts) so the owner can add everything from scratch
+  const demoIds = new Set(['user_om', 'user_manager', 'user_cashier', 'user_accounts', 'om', 'manager', 'cashier', 'accounts']);
+  const demoEmails = new Set(['om@system.local', 'manager@system.local', 'cashier@system.local', 'accounts@system.local']);
+  existing = existing.filter(u => !demoIds.has(u.id) && !demoIds.has(u.username) && !demoEmails.has(u.email));
 
   // Always ensure Mahmoud Mostafa is registered as primary Admin
   const mahmoudIdx = existing.findIndex(u => 
@@ -240,26 +199,28 @@ export function seedUsersIfEmpty() {
       createdAt: new Date().toISOString(),
       permissions: ['all']
     });
-    modified = true;
   } else {
-    if (existing[mahmoudIdx].role !== 'admin' || existing[mahmoudIdx].active !== true) {
-      existing[mahmoudIdx].role = 'admin';
-      existing[mahmoudIdx].active = true;
-      existing[mahmoudIdx].fullName = 'Mahmoud Mostafa';
-      modified = true;
-    }
+    existing[mahmoudIdx].role = 'admin';
+    existing[mahmoudIdx].active = true;
+    existing[mahmoudIdx].fullName = 'Mahmoud Mostafa';
   }
 
-  DEFAULT_USERS.forEach(defU => {
-    if (!existing.some(u => u.username === defU.username || (defU.email && u.email === defU.email))) {
-      existing.push(defU);
-      modified = true;
-    }
-  });
-
-  if (modified) {
-    localStorage.setItem('cs_users', JSON.stringify(existing));
+  // Ensure admin user is registered with 123456 fallback password
+  if (!existing.some(u => u.username === 'admin')) {
+    existing.push({
+      id: 'user_admin',
+      username: 'admin',
+      email: 'admin@system.local',
+      fullName: 'مدير النظام (Admin)',
+      password: btoa('123456'),
+      role: 'admin',
+      active: true,
+      createdAt: new Date().toISOString(),
+      permissions: ['all']
+    });
   }
+
+  localStorage.setItem('cs_users', JSON.stringify(existing));
   return existing;
 }
 
@@ -342,8 +303,171 @@ export const AuthService = {
     }
   },
 
-  // Perform immediate clean logout and redirect to index.html
-  logout: async () => {
+  // Get active shift object
+  getActiveShift: () => {
+    try {
+      return DataService.get('activeShift') || JSON.parse(localStorage.getItem('cs_active_shift') || 'null');
+    } catch (e) {
+      return null;
+    }
+  },
+
+  // Check if active shift is currently open
+  hasActiveShift: () => {
+    try {
+      const activeShift = AuthService.getActiveShift();
+      return Boolean(activeShift && (activeShift.id || activeShift.cashierName || activeShift.openedAt));
+    } catch (e) {
+      return false;
+    }
+  },
+
+  // Prompt modal to switch user or close shift when attempting logout during active shift
+  promptSwitchUserOrCloseShift: () => {
+    let modalEl = document.getElementById('switchUserShiftModal');
+    if (modalEl) modalEl.remove();
+
+    const activeShift = AuthService.getActiveShift();
+    const cashierName = activeShift?.cashierName || 'الكاشير';
+
+    const div = document.createElement('div');
+    div.id = 'switchUserShiftModal';
+    div.innerHTML = `
+      <div style="position:fixed;inset:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(4px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;direction:rtl;font-family:'Cairo','Inter',sans-serif;">
+        <div style="background:#fff;border-radius:12px;border:1px solid #cbd5e1;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);width:100%;max-width:440px;overflow:hidden;">
+          
+          <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:24px;">⚠️</span>
+              <div>
+                <div style="font-weight:800;font-size:15px;color:#0f172a;">وردية العمل لا تزال مفتوحة!</div>
+                <div style="font-size:12px;color:#64748b;">مسؤول الوردية الحالي: <strong>${cashierName}</strong></div>
+              </div>
+            </div>
+            <button type="button" id="suCloseBtn" style="background:none;border:none;font-size:20px;color:#94a3b8;cursor:pointer;padding:4px 8px;">✕</button>
+          </div>
+
+          <div style="padding:20px;">
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:8px;padding:12px;font-size:12px;line-height:1.6;margin-bottom:18px;">
+              💡 <strong>تنبيه إداري:</strong> يوجد درج وعهدة نقدية مفتوحة. لا يمكن الخروج بدون إغلاق الوردية، ولكن يمكنك <strong>تبديل الحساب</strong> وتسليم الشفت لمستخدم آخر مع استمرار نفس الوردية مفتوحة.
+            </div>
+
+            <form id="suLoginForm" style="display:flex;flex-direction:column;gap:12px;">
+              <div style="font-size:13px;font-weight:800;color:#1c69d4;display:flex;align-items:center;gap:6px;">
+                <span>🔑</span>
+                <span>تبديل الحساب (تسليم الشفت لمستخدم آخر دون إغلاق):</span>
+              </div>
+              
+              <div>
+                <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px;">اسم المستخدم أو البريد الإلكتروني</label>
+                <input type="text" id="suUsernameInput" required placeholder="مثال: admin أو البريد الإلكتروني" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:inherit;outline:none;" />
+              </div>
+
+              <div>
+                <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px;">كلمة المرور</label>
+                <input type="password" id="suPasswordInput" required placeholder="••••••••" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:inherit;outline:none;" />
+              </div>
+
+              <div id="suErrorMsg" style="display:none;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:700;"></div>
+
+              <button type="submit" id="suSubmitBtn" style="width:100%;padding:10px;background:#1c69d4;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;">
+                <span>تبديل الحساب ومتابعة الوردية 🔄</span>
+              </button>
+            </form>
+
+            <div style="margin:16px 0;display:flex;align-items:center;gap:10px;">
+              <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+              <span style="font-size:11px;color:#94a3b8;font-weight:700;">أو للتقفيل النهائي</span>
+              <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+            </div>
+
+            <button type="button" id="suGoCloseShiftBtn" style="width:100%;padding:10px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;">
+              <span>الذهاب لإغلاق وتقفيل الوردية وجرد الدرج 📋</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(div);
+
+    // Bind events
+    document.getElementById('suCloseBtn').onclick = () => div.remove();
+    document.getElementById('suGoCloseShiftBtn').onclick = () => {
+      div.remove();
+      window.location.href = 'accounts.html';
+    };
+
+    const form = document.getElementById('suLoginForm');
+    const errBox = document.getElementById('suErrorMsg');
+    const submitBtn = document.getElementById('suSubmitBtn');
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      errBox.style.display = 'none';
+      const u = document.getElementById('suUsernameInput').value.trim();
+      const p = document.getElementById('suPasswordInput').value.trim();
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'جاري التحقق والتبديل...';
+
+      try {
+        const newSession = await AuthService.switchUser(u, p);
+        div.remove();
+        alert(`✅ تم تبديل الحساب بنجاح!\nالمستخدم الحالي: ${newSession.fullName || newSession.username} (${ROLE_LABELS[newSession.role] || newSession.role})\nالوردية مستمرة دون انقطاع.`);
+        const curPage = window.location.pathname.split('/').pop().split('?')[0] || 'dashboard.html';
+        const allowed = ROLE_ALLOWED_PAGES[newSession.role] || [];
+        if (allowed.includes(curPage)) {
+          window.location.reload();
+        } else {
+          window.location.href = ROLE_HOME_PAGES[newSession.role] || 'dashboard.html';
+        }
+      } catch (err) {
+        errBox.textContent = err.message || 'فشل تبديل الحساب، تأكد من صحة البيانات';
+        errBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'تبديل الحساب ومتابعة الوردية 🔄';
+      }
+    };
+  },
+
+  // Switch user without closing current active shift
+  switchUser: async (identifier, password) => {
+    const prevSession = AuthService.getSession();
+    const newSession = await AuthService.login(identifier, password);
+
+    // Maintain and hand over active shift to the new user
+    const activeShift = AuthService.getActiveShift();
+    if (activeShift) {
+      activeShift.cashierName = newSession.fullName || newSession.username;
+      activeShift.lastSwitchedAt = new Date().toISOString();
+      DataService.set('activeShift', activeShift);
+    }
+
+    // Log the handover in guardLogs
+    try {
+      const logs = DataService.get('guardLogs') || JSON.parse(localStorage.getItem('cs_guard_logs') || '[]');
+      logs.push({
+        id: Date.now() + Math.random().toString(36).substr(2, 5),
+        timestamp: new Date().toISOString(),
+        user: newSession.fullName || newSession.username,
+        role: newSession.role,
+        action: 'تبديل مستخدم الوردية',
+        details: `تم تسليم شفت العمل من (${prevSession ? (prevSession.fullName || prevSession.username) : 'غير معروف'}) إلى (${newSession.fullName || newSession.username}) بدون إغلاق الوردية`,
+        value: 0
+      });
+      DataService.set('guardLogs', logs);
+    } catch (e) {}
+
+    return newSession;
+  },
+
+  // Perform clean logout with shift check enforcement
+  logout: async (force = false) => {
+    if (!force && AuthService.hasActiveShift()) {
+      AuthService.promptSwitchUserOrCloseShift();
+      return false;
+    }
+
     try {
       localStorage.removeItem('cs_session');
       sessionStorage.clear();
@@ -358,6 +482,7 @@ export const AuthService = {
       }
     }
     window.location.href = 'index.html';
+    return true;
   },
 
   // Login handler: Authenticates via Firebase Authentication + Local user fallback

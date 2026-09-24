@@ -157,6 +157,63 @@ async function startServer() {
   });
 
   // -------------------------------------------------------------
+  // Telegram Bot Shift Report Relay Endpoint
+  // -------------------------------------------------------------
+  app.post('/api/telegram/send-shift-report', async (req, res) => {
+    try {
+      const { token, chatId, caption, fileName, fileBase64 } = req.body || {};
+      const storeConfig = readDomainFile('storeConfig') || {};
+      const botToken = token || storeConfig.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN || '8864429923:AAFUW-7EV7xkxR0jFIizs9Oc4hPUnG8HeEs';
+      const targetChatId = chatId || storeConfig.telegramChatId || process.env.TELEGRAM_CHAT_ID || '1724117996';
+
+      if (!botToken || !targetChatId) {
+        console.log('[Telegram] No Bot Token or Chat ID configured. Report stored locally.');
+        return res.json({
+          ok: false,
+          warning: 'لم يتم إدخال توكن بوت التيليجرام أو معرّف المحادثة في الإعدادات. تم حفظ التقرير محلياً بنجاح.',
+          savedLocally: true
+        });
+      }
+
+      // If Excel file provided, send as Document
+      if (fileBase64 && fileName) {
+        const fileBuffer = Buffer.from(fileBase64, 'base64');
+        const formData = new FormData();
+        formData.append('chat_id', targetChatId);
+        const fileBlob = new Blob([fileBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        formData.append('document', fileBlob, fileName);
+        if (caption) {
+          formData.append('caption', caption);
+          formData.append('parse_mode', 'Markdown');
+        }
+
+        const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
+          method: 'POST',
+          body: formData
+        });
+        const tgData: any = await tgRes.json();
+        return res.json({ ok: tgData.ok, telegram: tgData });
+      } else {
+        // Send as markdown message
+        const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            text: caption,
+            parse_mode: 'Markdown'
+          })
+        });
+        const tgData: any = await tgRes.json();
+        return res.json({ ok: tgData.ok, telegram: tgData });
+      }
+    } catch (err: any) {
+      console.error('[Telegram] Error sending shift report:', err);
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // -------------------------------------------------------------
   // Socket.io Real-time Event Handling
   // -------------------------------------------------------------
   io.on('connection', (socket) => {

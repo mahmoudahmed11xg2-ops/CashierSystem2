@@ -588,11 +588,28 @@ table.custom-table tr:hover td { background: var(--surface2); }
           <span style="font-size:11px;color:var(--text-muted);">مثل: مشويات، ساندوتشات، مشروبات...</span>
         </div>
         <div style="display:flex;gap:6px;">
-          <select id="menuItemCat" style="flex:1;" required>
+          <select id="menuItemCat" style="flex:1;" required onchange="handleMenuItemCatChange(this.value)">
             <!-- Dynamic -->
           </select>
           <button type="button" class="btn-action-small" onclick="promptAddNewCategoryFromInventory()" title="إضافة قسم منيو جديد" style="padding:4px 10px;font-size:12px;background:var(--primary);color:#fff;border:none;">+ قسم جديد</button>
         </div>
+      </div>
+
+      <div class="form-group" id="menuItemSubCatGroup" style="display:none;">
+        <label>التصنيف الفرعي للمشروبات *</label>
+        <select id="menuItemSubCat">
+          <option value="القهوة الباردة">القهوة الباردة</option>
+          <option value="القهوة المميزة">القهوة المميزة</option>
+          <option value="الشاي">الشاي</option>
+          <option value="الإسبريسو">الإسبريسو</option>
+          <option value="الإضافات">الإضافات</option>
+          <option value="مشروبات مخفوقة">مشروبات مخفوقة</option>
+          <option value="موكتيلات">موكتيلات</option>
+          <option value="بوبا شاي">بوبا شاي</option>
+          <option value="ميلك شيك">ميلك شيك</option>
+          <option value="مشروبات غازية">مشروبات غازية</option>
+          <option value="عصائر طازجة">عصائر طازجة</option>
+        </select>
       </div>
 
       <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-top:8px;">
@@ -898,11 +915,12 @@ window.renderMenuItemsTable = function() {
   tbody.innerHTML = filtered.map(it => {
     const cat = cats.find(c => c.id === it.catId);
     const isAvail = it.available !== false;
+    const subBadge = it.subCategory ? `<span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:6px;margin-right:4px;">${it.subCategory}</span>` : '';
     return `
       <tr>
         <td><strong>${it.code || ('M' + it.id)}</strong></td>
         <td><strong>${it.name}</strong></td>
-        <td>${cat ? cat.name : 'عام'}</td>
+        <td>${cat ? cat.name : 'عام'} ${subBadge}</td>
         <td><strong>${it.price} ج</strong></td>
         <td>
           <span style="display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700;background:${isAvail ? '#dcfce7;color:#15803d;' : '#fee2e2;color:#b91c1c;'}">
@@ -949,6 +967,12 @@ window.promptAddNewCategoryFromInventory = function() {
   }
 };
 
+window.handleMenuItemCatChange = function(catId) {
+  const isDrink = String(catId) === '3';
+  const grp = document.getElementById('menuItemSubCatGroup');
+  if (grp) grp.style.display = isDrink ? 'block' : 'none';
+};
+
 window.openAddMenuItemModal = function() {
   let cats = DataService.get('categories') || [];
   if (!cats || cats.length === 0) {
@@ -966,6 +990,7 @@ window.openAddMenuItemModal = function() {
   document.getElementById('menuItemCode').value = '';
   document.getElementById('menuItemAvailable').checked = true;
 
+  handleMenuItemCatChange(cats[0]?.id || 1);
   openModal('menuItemModal');
 };
 
@@ -985,6 +1010,12 @@ window.openEditMenuItemModal = function(id) {
   document.getElementById('menuItemCode').value = it.code || '';
   document.getElementById('menuItemAvailable').checked = it.available !== false;
 
+  handleMenuItemCatChange(it.catId);
+  const subSel = document.getElementById('menuItemSubCat');
+  if (subSel && it.subCategory) {
+    subSel.value = it.subCategory;
+  }
+
   openModal('menuItemModal');
 };
 
@@ -996,17 +1027,19 @@ window.handleSaveMenuItem = function(e) {
   const catId = parseInt(document.getElementById('menuItemCat').value) || 1;
   const code = (document.getElementById('menuItemCode').value || '').trim().toUpperCase();
   const available = document.getElementById('menuItemAvailable').checked;
+  const isDrink = String(catId) === '3';
+  const subCategory = isDrink ? document.getElementById('menuItemSubCat').value : null;
 
   const items = DataService.get('items') || [];
 
   if (idVal) {
     const idx = items.findIndex(x => x.id == idVal);
     if (idx >= 0) {
-      items[idx] = { ...items[idx], name, price, catId, code: code || items[idx].code, available };
+      items[idx] = { ...items[idx], name, price, catId, code: code || items[idx].code, available, subCategory };
     }
   } else {
     const newId = items.length > 0 ? (Math.max(...items.map(s => s.id || 0)) + 1) : 1;
-    items.push({ id: newId, name, price, catId, code: code || `M${newId}`, available });
+    items.push({ id: newId, name, price, catId, code: code || `M${newId}`, available, subCategory });
   }
 
   DataService.set('items', items);

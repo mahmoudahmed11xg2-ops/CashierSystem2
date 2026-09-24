@@ -445,9 +445,10 @@ table.custom-table tr:hover td { background: var(--surface2); }
 <script type="module">
 import AuthService from './auth.js';
 import DataService from './js/dataService.js';
+import ShiftReportService from './js/shiftReportService.js';
 
-// تحميل بيانات الورديات والطلبات والمصروفات من السيرفر
-await DataService.init(['activeShift', 'orders', 'expenses', 'shiftsLog']);
+// تحميل بيانات الورديات والطلبات والمصروفات والمخزون وسجلات النظام من السيرفر
+await DataService.init(['activeShift', 'orders', 'expenses', 'shiftsLog', 'stock', 'guardLogs']);
 
 // استماع حي لتحديثات الوردية والمبيعات والمصروفات
 DataService.on(['activeShift', 'orders', 'expenses', 'shiftsLog'], () => {
@@ -639,13 +640,13 @@ window.calcDifference = function() {
   }
 };
 
-window.handleCloseShift = function(e) {
+window.handleCloseShift = async function(e) {
   e.preventDefault();
-  const activeShift = JSON.parse(localStorage.getItem('cs_active_shift') || 'null');
+  const activeShift = DataService.get('activeShift') || JSON.parse(localStorage.getItem('cs_active_shift') || 'null');
   if (!activeShift) return;
 
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
-  const expenses = JSON.parse(localStorage.getItem('cs_expenses') || '[]');
+  const orders = DataService.get('orders') || JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const expenses = DataService.get('expenses') || JSON.parse(localStorage.getItem('cs_expenses') || '[]');
 
   const startTime = new Date(activeShift.openedAtRaw || 0);
   const shiftOrders = orders.filter(o => !activeShift.openedAtRaw || new Date(o.createdAt || o.date) >= startTime);
@@ -657,7 +658,7 @@ window.handleCloseShift = function(e) {
   const actualDrawer = parseFloat(document.getElementById('actualDrawerInput').value) || 0;
   const diff = actualDrawer - expectedDrawer;
 
-  const log = JSON.parse(localStorage.getItem('cs_shifts_log') || '[]');
+  const log = DataService.get('shiftsLog') || JSON.parse(localStorage.getItem('cs_shifts_log') || '[]');
   const closedRecord = {
     id: log.length + 1,
     openedAt: activeShift.openedAt,
@@ -675,7 +676,35 @@ window.handleCloseShift = function(e) {
   DataService.set('activeShift', null);
 
   closeModal('closeShiftModal');
-  showToast('تم تقفيل الوردية وترحيل الحسابات بنجاح');
+  showToast('تم تقفيل الوردية. جاري تجهيز تقرير الإكسيل الشامل وإرساله للإدارة على تيليجرام...');
+
+  try {
+    const reportData = ShiftReportService.buildShiftData({
+      activeShift,
+      closedRecord,
+      orders: shiftOrders,
+      expenses: shiftExpenses
+    });
+
+    // Send Excel + Report summary to Telegram
+    const tgRes = await ShiftReportService.sendShiftReportToTelegram(reportData);
+    if (tgRes && tgRes.success) {
+      showToast('✅ تم إرسال تقرير وإكسيل الوردية إلى تليجرام الإدارة والأونر بنجاح!');
+    } else {
+      console.warn('Telegram send notice:', tgRes);
+      showToast('ℹ️ تم تقفيل الوردية محلياً، وجاري تحميل نسخة إكسيل احتياطية.');
+    }
+
+    // Auto-trigger browser download of the Excel file for cashier record
+    try {
+      ShiftReportService.downloadExcelLocally(reportData);
+    } catch (e) {
+      console.warn('Local Excel download notice:', e);
+    }
+  } catch (err) {
+    console.error('Shift close reporting error:', err);
+  }
+
   renderAccounts();
 };
 

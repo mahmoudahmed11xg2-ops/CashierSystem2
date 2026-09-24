@@ -7,5 +7,7 @@
   "printerModel": "Rongta RP336 (80mm)",
   "paperWidth": "80mm",
   "autoPrint": "enabled",
-  "receiptFooter": "شكرًا لزيارتكم ونسعد بخدمتكم دائمًا!"
+  "receiptFooter": "شكرًا لزيارتكم ونسعد بخدمتكم دائمًا!",
+  "telegramBotToken": "8864429923:AAFUW-7EV7xkxR0jFIizs9Oc4hPUnG8HeEs",
+  "telegramChatId": "1724117996"
 }

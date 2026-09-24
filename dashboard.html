@@ -882,11 +882,11 @@ body {
 import AuthService, { ROLE_LABELS } from './auth.js';
 import DataService from './js/dataService.js';
 
-// تحميل الطلبات والمخزون والمصروفات والطاولات من السيرفر
-await DataService.init(['orders', 'stock', 'expenses', 'tables']);
+// تحميل الطلبات والمخزون والمصروفات والطاولات والوردية من السيرفر
+await DataService.init(['orders', 'stock', 'expenses', 'tables', 'activeShift']);
 
 // استماع حي لأي تحديثات على مستوى النظام
-DataService.on(['orders', 'stock', 'expenses', 'tables'], () => {
+DataService.on(['orders', 'stock', 'expenses', 'tables', 'activeShift'], () => {
   renderDashboard();
 });
 
@@ -897,6 +897,44 @@ if (!AuthService.enforcePage('dashboard.html')) {
 
 const currentSession = AuthService.getSession();
 window.currentSession = currentSession;
+
+// Helper: Check if record belongs to today (local Egyptian date) or the active shift
+function isRecordTodayOrShift(record, activeShift) {
+  if (!record) return false;
+
+  // 1. If an active shift is open, include all records created since the shift started
+  if (activeShift && activeShift.openedAtRaw) {
+    const shiftStart = new Date(activeShift.openedAtRaw).getTime();
+    const itemTime = new Date(record.createdAt || record.date || 0).getTime();
+    if (!isNaN(itemTime) && itemTime >= shiftStart) return true;
+  }
+
+  // 2. Check local calendar day
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const d = now.getDate();
+
+  if (record.createdAt) {
+    const cd = new Date(record.createdAt);
+    if (!isNaN(cd.getTime()) && cd.getFullYear() === y && cd.getMonth() === m && cd.getDate() === d) {
+      return true;
+    }
+  }
+
+  if (record.date) {
+    const dd = new Date(record.date);
+    if (!isNaN(dd.getTime()) && dd.getFullYear() === y && dd.getMonth() === m && dd.getDate() === d) {
+      return true;
+    }
+    const localYMD = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    if (String(record.date).startsWith(localYMD)) return true;
+    const isoDay = now.toISOString().split('T')[0];
+    if (String(record.date).startsWith(isoDay)) return true;
+  }
+
+  return false;
+}
 
 // Navigation helper
 window.navigate = function(page) {
@@ -964,17 +1002,22 @@ function renderDashboard() {
 // General Stats (Admin, OM, Manager)
 // -------------------------------------------------------------
 function loadGeneralStats() {
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
-  const tables = JSON.parse(localStorage.getItem('cs_tables') || '[]');
-  const stock  = JSON.parse(localStorage.getItem('cs_stock')  || '[]');
+  const orders = DataService.get('orders') || JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const tables = DataService.get('tables') || JSON.parse(localStorage.getItem('cs_tables') || '[]');
+  const stock  = DataService.get('stock')  || JSON.parse(localStorage.getItem('cs_stock')  || '[]');
+  const expenses = DataService.get('expenses') || JSON.parse(localStorage.getItem('cs_expenses') || '[]');
+  const activeShift = DataService.get('activeShift') || JSON.parse(localStorage.getItem('cs_active_shift') || 'null');
 
-  const today = new Date().toISOString().split('T')[0];
-  const todayOrders = orders.filter(o => o.date === today && o.status !== 'cancelled' && !['officer', 'cl', 'hospitality'].includes(o.payMethod));
+  const todayOrders = orders.filter(o => isRecordTodayOrShift(o, activeShift) && o.status !== 'cancelled' && !['officer', 'cl', 'hospitality'].includes(o.payMethod));
   const todayTotal = todayOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
   const todayCount = todayOrders.length;
 
+  const todayExpenses = expenses.filter(e => isRecordTodayOrShift(e, activeShift));
+  const expTotal = todayExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  const netSales = Math.max(0, todayTotal - expTotal);
+
   document.getElementById('statSales').textContent = todayTotal.toLocaleString('ar-EG') + ' ج';
-  document.getElementById('statSalesSub').textContent = todayCount + ' فاتورة فعلية';
+  document.getElementById('statSalesSub').textContent = `${todayCount} فاتورة | صافي بعد المصروفات: ${netSales.toLocaleString('ar-EG')} ج`;
 
   const openCount = orders.filter(o => o.status === 'open' || o.dStatus === 'pending' || o.dStatus === 'delivering').length;
   document.getElementById('statOrders').textContent = openCount;
@@ -986,6 +1029,7 @@ function loadGeneralStats() {
   document.getElementById('statStock').textContent = lowStockCount;
 
   // Week Chart
+  const today = new Date().toISOString().split('T')[0];
   renderWeekChart('weekChart', 'weekTotal', orders, today);
 
   // Recent Orders
@@ -1002,8 +1046,8 @@ function loadGeneralStats() {
 // Cashier Specific Stats
 // -------------------------------------------------------------
 function loadCashierStats() {
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
-  const tables = JSON.parse(localStorage.getItem('cs_tables') || '[]');
+  const orders = DataService.get('orders') || JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const tables = DataService.get('tables') || JSON.parse(localStorage.getItem('cs_tables') || '[]');
 
   const openCount = orders.filter(o => o.status === 'open').length;
   document.getElementById('cashierStatOpenOrders').textContent = openCount;
@@ -1021,16 +1065,17 @@ function loadCashierStats() {
 // Accounts Specific Stats
 // -------------------------------------------------------------
 function loadAccountsStats() {
-  const orders = JSON.parse(localStorage.getItem('cs_orders') || '[]');
-  const expenses = JSON.parse(localStorage.getItem('cs_expenses') || '[]');
+  const orders = DataService.get('orders') || JSON.parse(localStorage.getItem('cs_orders') || '[]');
+  const expenses = DataService.get('expenses') || JSON.parse(localStorage.getItem('cs_expenses') || '[]');
+  const activeShift = DataService.get('activeShift') || JSON.parse(localStorage.getItem('cs_active_shift') || 'null');
   const today = new Date().toISOString().split('T')[0];
 
-  const todayOrders = orders.filter(o => o.date === today && o.status !== 'cancelled');
+  const todayOrders = orders.filter(o => isRecordTodayOrShift(o, activeShift) && o.status !== 'cancelled');
   const grossSales = todayOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
   document.getElementById('accStatGrossSales').textContent = grossSales.toLocaleString('ar-EG') + ' ج';
   document.getElementById('accStatOrdersCount').textContent = todayOrders.length + ' فاتورة مسجلة';
 
-  const todayExpenses = expenses.filter(e => (e.date || '').startsWith(today));
+  const todayExpenses = expenses.filter(e => isRecordTodayOrShift(e, activeShift));
   const expTotal = todayExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
   document.getElementById('accStatExpenses').textContent = expTotal.toLocaleString('ar-EG') + ' ج';
 

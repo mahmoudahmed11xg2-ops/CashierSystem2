@@ -550,8 +550,8 @@ function showDirectPrintModal(htmlContent) {
   }
 }
 
-// توليد كود HTML الكامل لبون تشغيل المطبخ (بدون أسعار، بخطوط عريضة وملاحظات مميزة)
-export function generateKitchenTicketHTML(order, round = null) {
+// توليد كود HTML لبون تشغيل المطبخ أو البار (بدون أسعار نهائياً - إشعار طلب للمطبخ والبار)
+export function generateOrderTicketHTML({ destination = 'kitchen', order = {}, round = null, items = [] } = {}) {
   const cfg = getPrinterConfig();
   const paperWidth = cfg.paperWidth === '58mm' ? '58mm' : '80mm';
   const printableWidth = paperWidth === '58mm' ? '48mm' : '72mm';
@@ -562,21 +562,24 @@ export function generateKitchenTicketHTML(order, round = null) {
     delivery: 'ديليفري (توصيل منازل)'
   };
 
+  const isBar = destination === 'bar';
+  const ticketTitle = isBar ? '*** بون تشغيل البار / المشروبات ☕🍹 ***' : '*** بون تشغيل المطبخ / الطعام 👨‍🍳🍽️ ***';
+  const badgeColor = isBar ? '#0369a1' : '#b91c1c';
   const orderType = typeLabels[order.type] || order.type || 'طلب جديد';
   const tableInfo = order.tableLabel ? `— ${order.tableLabel}` : (order.tableNumber ? `— طاولة ${order.tableNumber}` : '');
-  const roundInfo = round ? `<div style="font-size:14px;font-weight:900;background:#000;color:#fff;padding:4px 8px;margin:6px 0;text-align:center;border-radius:4px;">طلب إضافي: راوند #${round}</div>` : '';
+  const roundInfo = round ? `<div style="font-size:14px;font-weight:900;background:#000;color:#fff;padding:4px 8px;margin:5px 0;text-align:center;border-radius:4px;">طلب Round #${round}</div>` : '';
   const now = new Date();
   const timeStr = order.time || now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
-  const items = order.items || [];
+  const ticketItems = (items && items.length > 0) ? items : (order.items || []);
   let itemsRows = '';
-  items.forEach(it => {
+  ticketItems.forEach(it => {
     const qty = it.qty || 1;
     const noteHtml = it.note ? `<div style="font-size:12px;font-weight:bold;margin-top:3px;background:#f0f0f0;border-right:3px solid #000;padding:2px 6px;">⚠️ ${it.note}</div>` : '';
     itemsRows += `
-      <div style="border-bottom:1px dashed #000;padding:8px 0;">
+      <div style="border-bottom:1.5px dashed #000;padding:8px 0;">
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:900;">
-          <span style="display:inline-block;background:#000;color:#fff;padding:2px 8px;border-radius:4px;font-size:17px;min-width:32px;text-align:center;">× ${qty}</span>
+          <span style="display:inline-block;background:#000;color:#fff;padding:2px 8px;border-radius:4px;font-size:17px;min-width:34px;text-align:center;">× ${qty}</span>
           <span style="flex:1;margin-right:10px;text-align:right;">${it.name}</span>
         </div>
         ${noteHtml}
@@ -589,30 +592,30 @@ export function generateKitchenTicketHTML(order, round = null) {
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>بون تشغيل المطبخ #${order.id}</title>
+  <title>${isBar ? 'بون البار' : 'بون المطبخ'} #${order.id || 'Round'}</title>
   <style>
     @page { size: ${paperWidth} auto; margin: 0; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       width: ${printableWidth};
       margin: 0 auto;
-      padding: 6mm 2mm 10mm 2mm;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      padding: 5mm 2mm 8mm 2mm;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", Arial, sans-serif;
       font-size: 13px;
       line-height: 1.35;
       color: #000;
       background: #fff;
     }
     .k-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 8px; }
-    .k-title { font-size: 18px; font-weight: 900; letter-spacing: 1px; }
+    .k-title { font-size: 16px; font-weight: 900; letter-spacing: 0.5px; }
     .k-meta { display: flex; justify-content: space-between; font-size: 12px; margin-top: 4px; font-weight: 700; }
-    .k-dest { font-size: 16px; font-weight: 900; margin: 6px 0; text-align: center; }
+    .k-dest { font-size: 17px; font-weight: 900; margin: 6px 0; text-align: center; }
   </style>
 </head>
 <body>
   <div class="k-header">
-    <div class="k-title">*** بون تشغيل المطبخ ***</div>
-    <div style="font-size:24px;font-weight:900;margin:4px 0;">طلب رقم #${order.id}</div>
+    <div class="k-title">${ticketTitle}</div>
+    <div style="font-size:22px;font-weight:900;margin:3px 0;">طلب رقم #${order.id || 'جديد'}</div>
     <div class="k-dest">${orderType} ${tableInfo}</div>
     ${roundInfo}
     <div class="k-meta">
@@ -625,22 +628,40 @@ export function generateKitchenTicketHTML(order, round = null) {
     ${itemsRows}
   </div>
 
-  <div style="text-align:center;font-size:11px;font-weight:700;margin-top:14px;border-top:1px solid #000;padding-top:6px;">
-    إجمالي البنود: ${items.reduce((s, x) => s + (x.qty || 1), 0)} صنف — يُرجى سرعة التجهيز
+  <div style="text-align:center;font-size:11px;font-weight:700;margin-top:12px;border-top:1px solid #000;padding-top:6px;">
+    إجمالي البنود: ${ticketItems.reduce((s, x) => s + (x.qty || 1), 0)} صنف — لا توجد أسعار (أمر تشغيل وتجهيز فقط)
   </div>
 </body>
 </html>
   `;
 }
 
-// طباعة بون المطبخ مباشرة عبر طابعة Rongta RP336
-export async function printKitchenTicket(order, round = null) {
-  const html = generateKitchenTicketHTML(order, round);
+// توليد كود HTML الكامل لبون تشغيل المطبخ (بدون أسعار، بخطوط عريضة وملاحظات مميزة)
+export function generateKitchenTicketHTML(order, round = null, items = null) {
+  return generateOrderTicketHTML({
+    destination: 'kitchen',
+    order,
+    round,
+    items: items || order.items
+  });
+}
 
-  let iframe = document.getElementById('thermal-kitchen-printer-iframe');
+// توليد كود HTML لبون تشغيل البار والمشروبات (بدون أسعار، مخصص لقسم المشروبات)
+export function generateBarTicketHTML(order, round = null, items = null) {
+  return generateOrderTicketHTML({
+    destination: 'bar',
+    order,
+    round,
+    items: items || order.items
+  });
+}
+
+// دالة داخلية للطباعة عبر iframe
+function printTicketViaIframe(iframeId, html) {
+  let iframe = document.getElementById(iframeId);
   if (!iframe) {
     iframe = document.createElement('iframe');
-    iframe.id = 'thermal-kitchen-printer-iframe';
+    iframe.id = iframeId;
     iframe.style.position = 'fixed';
     iframe.style.right = '0';
     iframe.style.bottom = '0';
@@ -671,6 +692,75 @@ export async function printKitchenTicket(order, round = null) {
       reject(e);
     }
   });
+}
+
+// طباعة بون المطبخ مباشرة عبر طابعة المطبخ
+export async function printKitchenTicket(order, round = null, items = null) {
+  const html = generateKitchenTicketHTML(order, round, items);
+  return printTicketViaIframe('thermal-kitchen-printer-iframe', html);
+}
+
+// طباعة بون البار مباشرة عبر طابعة البار والمشروبات
+export async function printBarTicket(order, round = null, items = null) {
+  const html = generateBarTicketHTML(order, round, items);
+  return printTicketViaIframe('thermal-bar-printer-iframe', html);
+}
+
+// التوجيه التلقائي لبونات المطبخ والبار عند إرسال Round أو طلب جديد:
+// يفصل بنود الطعام عن بنود المشروبات ويطبع لكل منهما بون تشغيل منفصل فوراً وبدون أسعار!
+export async function routeAndPrintRoundTickets({ order = {}, round = null, items = [], categories = [] } = {}) {
+  const allItems = (items && items.length > 0) ? items : (order.items || []);
+  if (!allItems || allItems.length === 0) return { foodCount: 0, drinksCount: 0 };
+
+  const foodItems = [];
+  const barItems = [];
+
+  const drinkKeywords = ['قهوة', 'شاي', 'لاتيه', 'عصير', 'بيبسي', 'سفن', 'مياه', 'موهيتو', 'فرابيه', 'بوبا', 'ميلك شيك', 'كورتادو', 'إسبريسو', 'كابتشينو', 'مشروب', 'كولد برو', 'كرك'];
+
+  allItems.forEach(it => {
+    const cat = categories.find(c => c.id === it.catId);
+    const catName = cat ? cat.name : '';
+    const isDrinkCat = it.catId === 3 || catName.includes('مشروبات') || Boolean(it.subCategory);
+    const matchesKeyword = drinkKeywords.some(kw => (it.name || '').includes(kw));
+
+    if (isDrinkCat || matchesKeyword) {
+      barItems.push(it);
+    } else {
+      foodItems.push(it);
+    }
+  });
+
+  const results = {
+    foodCount: foodItems.length,
+    drinksCount: barItems.length
+  };
+
+  // طباعة بون المطبخ إذا وُجد طعام
+  if (foodItems.length > 0) {
+    try {
+      await printKitchenTicket(order, round, foodItems);
+    } catch (err) {
+      console.warn('Kitchen ticket print warning:', err);
+    }
+  }
+
+  // طباعة بون البار إذا وُجدت مشروبات
+  if (barItems.length > 0) {
+    try {
+      // إعطاء فاصل زمني 300 مللي ثانية بين طباعة المطبخ والبار
+      setTimeout(async () => {
+        try {
+          await printBarTicket(order, round, barItems);
+        } catch (err) {
+          console.warn('Bar ticket print warning:', err);
+        }
+      }, 400);
+    } catch (err) {
+      console.warn('Bar ticket dispatch warning:', err);
+    }
+  }
+
+  return results;
 }
 
 // طباعة إيصال تجريبي لطابعة Rongta RP336 للتحقق من الاتصال وعرض الورق 80 مم
@@ -740,8 +830,12 @@ export default {
   savePrinterConfig,
   generateReceiptHTML,
   generateKitchenTicketHTML,
+  generateBarTicketHTML,
+  generateOrderTicketHTML,
   printReceipt,
   printKitchenTicket,
+  printBarTicket,
+  routeAndPrintRoundTickets,
   printTestReceipt,
   printDirectESC_POS
 };
