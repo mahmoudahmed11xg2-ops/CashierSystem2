@@ -1756,13 +1756,22 @@ function showReceipt(inv) {
   if (inv.rounds && inv.rounds.length > 0) {
     roundsHtml = `
       <div style="margin:6px 0;border-top:1px dashed var(--border-strong);padding-top:6px;">
-        <div style="font-weight:700;font-size:11px;color:var(--text-muted);margin-bottom:4px;">تفاصيل الـ Rounds بالجلسة:</div>
-        ${inv.rounds.map(r => `
-          <div style="font-size:11px;margin-bottom:4px;">
-            <strong>Round #${r.roundNumber} (${r.time}):</strong>
-            ${r.items.map(it => `${it.name} × ${it.qty}`).join(', ')}
+        <div style="font-weight:700;font-size:11px;color:var(--text-muted);margin-bottom:4px;">وقت الطلب :</div>
+        ${inv.rounds.map((r, idx) => `
+          <div style="font-size:11px;display:flex;justify-content:space-between;margin-bottom:2px;">
+            <span>الطلب ${r.roundNumber || (idx + 1)} الساعة ${r.time || '---'}</span>
+            ${r.subtotal ? `<span>${(r.subtotal).toLocaleString('ar-EG')} ج</span>` : ''}
           </div>
         `).join('')}
+      </div>
+    `;
+  } else {
+    roundsHtml = `
+      <div style="margin:6px 0;border-top:1px dashed var(--border-strong);padding-top:6px;">
+        <div style="font-weight:700;font-size:11px;color:var(--text-muted);margin-bottom:4px;">وقت الطلب :</div>
+        <div style="font-size:11px;display:flex;justify-content:space-between;margin-bottom:2px;">
+          <span>الطلب 1 الساعة ${inv.time || new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
       </div>
     `;
   }

@@ -13,22 +13,22 @@ export const PRINTER_CONFIG_DEFAULT = {
   storeName: 'مطعم وكافيه الشرق',
   storePhone: '01000000000 - 01200000000',
   storeAddress: 'شارع النصر الرئيسي - الفرع الأول',
-  taxNumber: '123-456-789',
-  receiptHeaderSubtitle: 'بون فواتير ومبيعات إلكترونية',
+  taxNumber: '',
+  receiptHeaderSubtitle: '',
   receiptFooter: 'شكرًا لزيارتكم الكريمة ونسعد بخدمتكم دائمًا!',
-  receiptPolicyNote: 'الاستبدال والاسترجاع بالفاتورة الأصلية خلال المدة القانونية',
-  showBarcode: true,
+  receiptPolicyNote: '',
+  showBarcode: false,
   showStoreAddress: true,
   showStorePhone: true,
-  showTaxNumber: true,
+  showTaxNumber: false,
   showCashierName: true,
   showCustomerInfo: true,
   showOrderComment: true,
   orderCommentLabel: 'ملاحظات الفاتورة:',
-  feedLines: 3,
+  feedLines: 2,
   // Round / Kitchen / Bar Ticket Customization
-  kitchenTicketTitle: '*** بون تشغيل المطبخ / الطعام 👨‍🍳🍽️ ***',
-  barTicketTitle: '*** بون تشغيل البار / المشروبات ☕🍹 ***',
+  kitchenTicketTitle: '',
+  barTicketTitle: '',
   showRoundNumber: true,
   showTableInfo: true,
   showRoundTime: true,
@@ -42,18 +42,16 @@ export const PRINTER_CONFIG_DEFAULT = {
 };
 
 export const DEFAULT_RECEIPT_BLOCKS = [
-  { id: 'header_brand', enabled: true, title: 'شعار واسم المنشأة والعنوان الفرعي', icon: '🏪' },
-  { id: 'store_contact', enabled: true, title: 'العنوان ورقم الهاتف والبطاقة الضريبية', icon: '📍' },
+  { id: 'header_brand', enabled: true, title: 'شعار واسم المنشأة', icon: '🏪' },
+  { id: 'store_contact', enabled: true, title: 'العنوان ورقم الهاتف', icon: '📍' },
   { id: 'order_badge', enabled: true, title: 'نوع الطلب ورقم الطاولة', icon: '🏷️' },
   { id: 'order_meta', enabled: true, title: 'بيانات الفاتورة والكاشير والعميل', icon: '🧾' },
   { id: 'order_comment', enabled: true, title: 'ملاحظات وكومنت الطلب', icon: '📝' },
   { id: 'items_table', enabled: true, title: 'جدول الأصناف والكميات والأسعار', icon: '🍽️' },
-  { id: 'rounds_detail', enabled: true, title: 'ملخص جولات الـ Rounds السابقة', icon: '⏱️' },
+  { id: 'rounds_detail', enabled: true, title: 'وقت الطلب والجولات', icon: '⏱️' },
   { id: 'totals_summary', enabled: true, title: 'ملخص الحساب والإجمالي وطريقة السداد', icon: '💰' },
   { id: 'wifi_box', enabled: true, title: 'بيانات شبكة الواي فاي للعملاء (WiFi)', icon: '📶' },
-  { id: 'policy_note', enabled: true, title: 'ملاحظات وسياسة المنشأة والاسترجاع', icon: '📜' },
-  { id: 'footer_text', enabled: true, title: 'رسالة الشكر والترحيب بأسفل الفاتورة', icon: '🙏' },
-  { id: 'barcode', enabled: true, title: 'كود الباركود برقم الفاتورة', icon: '🔲' }
+  { id: 'footer_text', enabled: true, title: 'رسالة الشكر والترحيب بأسفل الفاتورة', icon: '🙏' }
 ];
 
 export function getPrinterConfig() {
@@ -148,18 +146,28 @@ export function generateReceiptHTML(invoice, options = {}) {
     `;
   });
 
-  // في حال وجود جولات (Rounds) بطاولات الصالة
+  // أوقات الطلبات والجولات (وقت الطلب)
   let roundsHtml = '';
-  if (invoice.rounds && invoice.rounds.length > 1) {
+  if (invoice.rounds && invoice.rounds.length > 0) {
     roundsHtml = `
-      <div class="receipt-section-title">ملخص جولات الطلب (${invoice.rounds.length} Rounds):</div>
+      <div class="receipt-section-title">وقت الطلب :</div>
       <div class="rounds-box">
-        ${invoice.rounds.map(r => `
+        ${invoice.rounds.map((r, idx) => `
           <div class="round-line">
-            <span>جولة #${r.roundNumber} (${r.time})</span>
-            <span>${(r.subtotal || 0).toLocaleString('ar-EG')} ج</span>
+            <span>الطلب ${r.roundNumber || (idx + 1)} الساعة ${r.time || timeStr}</span>
+            ${r.subtotal ? `<span>${(r.subtotal || 0).toLocaleString('ar-EG')} ج</span>` : ''}
           </div>
         `).join('')}
+      </div>
+      <div class="dashed-line"></div>
+    `;
+  } else {
+    roundsHtml = `
+      <div class="receipt-section-title">وقت الطلب :</div>
+      <div class="rounds-box">
+        <div class="round-line">
+          <span>الطلب 1 الساعة ${timeStr}</span>
+        </div>
       </div>
       <div class="dashed-line"></div>
     `;
@@ -174,12 +182,10 @@ export function generateReceiptHTML(invoice, options = {}) {
   const blockRenderers = {
     header_brand: () => `
       <div class="header-logo-text">${cfg.storeName || 'اسم المنشأة'}</div>
-      ${cfg.receiptHeaderSubtitle ? `<div class="header-subtitle">${cfg.receiptHeaderSubtitle}</div>` : ''}
     `,
     store_contact: () => `
       ${cfg.showStoreAddress !== false && cfg.storeAddress ? `<div class="header-info">📍 ${cfg.storeAddress}</div>` : ''}
       ${cfg.showStorePhone !== false && cfg.storePhone ? `<div class="header-info">📞 ${cfg.storePhone}</div>` : ''}
-      ${cfg.showTaxNumber !== false && (cfg.receiptTaxNumber || cfg.taxNumber) ? `<div class="header-info">الرقم الضريبي/السجل: ${cfg.receiptTaxNumber || cfg.taxNumber}</div>` : ''}
     `,
     order_badge: () => `
       <div class="double-line"></div>
@@ -295,22 +301,13 @@ export function generateReceiptHTML(invoice, options = {}) {
         📶 <strong>شبكة الضيوف:</strong> ${cfg.receiptWifiInfo}
       </div>
     ` : '',
-    policy_note: () => cfg.receiptPolicyNote ? `
-      <div style="font-size:9.5px;color:#444;margin:4px 0 6px;line-height:1.4;text-align:center;border-top:1px dotted #888;padding-top:4px;">
-        ${cfg.receiptPolicyNote}
-      </div>
-    ` : '',
+    policy_note: () => '',
     footer_text: () => `
       <div class="footer-box">
         <div class="footer-note">${cfg.receiptFooter || 'شكرًا لزيارتكم!'}</div>
-        <div style="font-size:9.5px;color:#555;margin-top:4px;">نظام إدارة المطاعم والكاشير المتكامل</div>
       </div>
     `,
-    barcode: () => (cfg.showBarcode !== false && cfg.showReceiptBarcode !== false) ? `
-      <div style="text-align:center;margin:6px 0;">
-        ${generateBarcodeSVG(invoice.id || Date.now())}
-      </div>
-    ` : ''
+    barcode: () => ''
   };
 
   // ترتيب البلوكات بحسب ما قام بتحديده المستخدم
@@ -486,14 +483,6 @@ export function generateReceiptHTML(invoice, options = {}) {
       font-weight: 700;
       margin-bottom: 6px;
     }
-    .tear-guide {
-      margin-top: 15px;
-      padding-top: 8px;
-      text-align: center;
-      font-size: 9.5px;
-      color: #666;
-      border-top: 1px dashed #aaa;
-    }
     @media screen {
       body {
         max-width: 380px;
@@ -524,10 +513,6 @@ export function generateReceiptHTML(invoice, options = {}) {
 <body>
   <div class="receipt-container">
     ${renderedBlocksHtml}
-
-    <div class="tear-guide">
-      ✂ - - - - - - - - قاطع الورق الآلي - - - - - - - - ✂
-    </div>
   </div>
 </body>
 </html>
@@ -710,8 +695,6 @@ export function generateOrderTicketHTML({ destination = 'kitchen', order = {}, r
 </head>
 <body>
   <div class="k-header">
-    <div class="k-title">${ticketTitle}</div>
-    <div style="font-size:22px;font-weight:900;margin:3px 0;">طلب رقم #${order.id || 'جديد'}</div>
     <div class="k-dest">${orderType} ${tableInfo}</div>
     ${roundInfo}
     <div class="k-meta">
@@ -729,10 +712,6 @@ export function generateOrderTicketHTML({ destination = 'kitchen', order = {}, r
 
   <div class="k-items">
     ${itemsRows}
-  </div>
-
-  <div style="text-align:center;font-size:11px;font-weight:700;margin-top:12px;border-top:1px solid #000;padding-top:6px;">
-    إجمالي البنود: ${ticketItems.reduce((s, x) => s + (x.qty || 1), 0)} صنف — لا توجد أسعار (أمر تشغيل وتجهيز فقط)
   </div>
 </body>
 </html>
