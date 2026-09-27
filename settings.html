@@ -352,12 +352,80 @@ body {
           <span>🖨️ إعدادات الطابعة الحرارية والفواتير</span>
           <span style="background:#e0f2fe;color:#0369a1;font-size:12px;padding:2px 8px;border-radius:10px;font-weight:bold;">مهيأة لطابعة Rongta RP336 (80mm)</span>
         </div>
-        <div class="card-desc">تخصيص مقاس الورق، الطباعة التلقائية، واختبار الاتصال المباشر بطابعة الفواتير</div>
+        <div class="card-desc">تخصيص طابعات النظام، الطباعة التلقائية، والطباعة الصامتة الفورية بدون شاشة ويندوز</div>
       </div>
       <form onsubmit="handleSavePrinter(event)">
+        <!-- كارت فحص بيئة Electron والطباعة الصامتة -->
+        <div id="electronStatusBanner" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:22px;">⚡</span>
+            <div>
+              <div id="electronStatusTitle" style="font-weight:800;color:#166534;font-size:13.5px;">تطبيق الكاشير المكتبي (Electron Silent Printing)</div>
+              <div id="electronStatusSub" style="color:#15803d;font-size:12px;margin-top:2px;">تدعم الطباعة الفورية الصامتة (Silent Print) مباشرة لطابعات الويندوز الموصلة بدون فتح أي نافذة.</div>
+            </div>
+          </div>
+          <button type="button" class="btn-secondary" style="font-size:12px;padding:6px 12px;font-weight:bold;background:#fff;border-color:#86efac;color:#166534;" onclick="refreshSystemPrintersList()">
+            🔄 فحص وتحديث طابعات الجهاز
+          </button>
+        </div>
+
+        <!-- قسم اختيار وتعيين طابعات الويندوز الموصلة -->
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:14px;">
+          <div style="font-weight:800;font-size:13.5px;color:#0f172a;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span>🔌 تعيين الطابعات من إعدادات الجهاز (Windows Printers)</span>
+            </div>
+            <span id="detectedPrintersBadge" style="font-size:11.5px;background:#e2e8f0;color:#334155;padding:2px 8px;border-radius:10px;font-weight:bold;">جاري التحقق من الطابعات...</span>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>طابعة الفواتير والكاشير الرئيسية (Receipt Printer)</label>
+              <div style="display:flex;gap:6px;">
+                <select id="cfgReceiptPrinterSelect" onchange="syncPrinterSelection('receipt')" style="flex:1;">
+                  <option value="">-- اختر من طابعات الجهاز --</option>
+                </select>
+                <input type="text" id="cfgReceiptPrinterName" placeholder="أو اسم الطابعة (مثلاً: Rongta RP336)" style="flex:1.2;" />
+              </div>
+              <small style="color:var(--text-muted);font-size:11px;">الاسم المطابق لتعريف الطابعة في Windows Settings (مثلاً: Rongta RP336 أو POS-80)</small>
+            </div>
+
+            <div class="form-group">
+              <label>الطباعة الصامتة الفورية (بدون نافذة ويندوز)</label>
+              <select id="cfgUseSilentPrint">
+                <option value="true">⚡ مفعلة (إخراج الريسيت فوراً بدون أي نوافذ نهائياً)</option>
+                <option value="false">النافذة التقليدية (عرض شاشة الطباعة العادية)</option>
+              </select>
+              <small style="color:var(--text-muted);font-size:11px;">تقوم بإرسال الفاتورة للطابعة مباشرة وخروج الريسيت في أجزاء من الثانية</small>
+            </div>
+          </div>
+
+          <div class="grid-2" style="margin-top:12px;border-top:1px dashed #cbd5e1;padding-top:12px;">
+            <div class="form-group">
+              <label>طابعة المطبخ وبونات الطعام (Kitchen Printer) <span style="font-weight:normal;color:#64748b;">(اختياري)</span></label>
+              <div style="display:flex;gap:6px;">
+                <select id="cfgKitchenPrinterSelect" onchange="syncPrinterSelection('kitchen')" style="flex:1;">
+                  <option value="">-- نفس طابعة الكاشير الرئيسية --</option>
+                </select>
+                <input type="text" id="cfgKitchenPrinterName" placeholder="اسم طابعة المطبخ (اختياري)" style="flex:1.2;" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>طابعة البار والمشروبات (Bar Ticket Printer) <span style="font-weight:normal;color:#64748b;">(اختياري)</span></label>
+              <div style="display:flex;gap:6px;">
+                <select id="cfgBarPrinterSelect" onchange="syncPrinterSelection('bar')" style="flex:1;">
+                  <option value="">-- نفس طابعة الكاشير الرئيسية --</option>
+                </select>
+                <input type="text" id="cfgBarPrinterName" placeholder="اسم طابعة البار (اختياري)" style="flex:1.2;" />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="grid-2">
           <div class="form-group">
-            <label>طراز الطابعة الموصلة</label>
+            <label>طراز الطابعة الافتراضي</label>
             <select id="cfgPrinterModel">
               <option value="Rongta RP336 (80mm)">Rongta RP336 (عرض 80 مم - موصى به)</option>
               <option value="Rongta RP326 / RP80">Rongta RP326 / RP80 (80 مم)</option>
@@ -392,18 +460,20 @@ body {
             <span>📋 إرشادات مهمة لتعريف وتشغيل طابعة Rongta RP336 على الجهاز:</span>
           </div>
           <ul style="margin:0;padding-right:20px;font-size:12px;color:#475569;line-height:1.7;">
-            <li><strong>اختيار الطابعة:</strong> في نافذة الطباعة المنبثقة، تأكد من اختيار <strong>Rongta RP336</strong> أو <strong>POS-80</strong> في خانة الوجهة (Destination).</li>
+            <li><strong>الطباعة الصامتة (Silent Print):</strong> عند تفعيل خيار الطباعة الصامتة أعلاه، سيتم إرسال الفاتورة للطابعة فوراً دون ظهور أي نافذة.</li>
+            <li><strong>تسمية الطابعة:</strong> تأكد أن اسم الطابعة المكتوب أعلاه مطابق تماماً لاسم الطابعة في إعدادات الويندوز (Printers & Scanners).</li>
             <li><strong>مقاس الورق (Paper Size):</strong> اختر <strong>80mm</strong> أو <strong>Roll Paper 80 x 297mm</strong>.</li>
             <li><strong>الهوامش (Margins):</strong> <span style="color:#b91c1c;font-weight:bold;">اختر بلا (None)</span> — هذا يمنع قص أو خروج الفاتورة فارغة.</li>
-            <li><strong>الرؤوس والتذييلات (Headers & Footers):</strong> <span style="color:#b91c1c;font-weight:bold;">قم بإلغاء التحديد (Uncheck)</span> حتى لا يُطبع عنوان المتصفح والتاريخ على الفاتورة.</li>
-            <li><strong>تغذية الورق:</strong> تأكد من تركيب بكرة الورق الحراري بحيث يسحب الورق للأعلى (الوجه الأبيض الحراري ملامس للمسطرة الحرارية).</li>
           </ul>
         </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-          <div style="display:flex;gap:8px;align-items:center;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button type="button" class="btn-secondary" style="background:#fef3c7;border-color:#fde047;color:#854d0e;font-weight:800;" onclick="testSilentDirectPrinter()">
+              ⚡ اختبار الطباعة الفورية الصامتة (Silent Test)
+            </button>
             <button type="button" class="btn-secondary" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;font-weight:800;" onclick="testRongtaPrinter()">
-              🖨️ طباعة إيصال تجريبي لطابعة Rongta RP336 (80mm)
+              🖨️ طباعة إيصال تجريبي (80mm)
             </button>
             <button type="button" class="btn-secondary" style="font-size:12px;" onclick="testDirectUSBPrinter()" title="طباعة مباشرة عبر منفذ USB بدون نافذة المتصفح">
               🔌 اختبار منفذ USB مباشر (ESC/POS)
@@ -682,10 +752,31 @@ function loadSettings() {
   document.getElementById('cfgTax').value = cfg.tax !== undefined ? cfg.tax : 0;
   document.getElementById('cfgDeliveryFee').value = cfg.deliveryFee !== undefined ? cfg.deliveryFee : 0;
 
-  document.getElementById('cfgPrinterModel').value = cfg.printerModel || 'Rongta RP336 (80mm)';
-  document.getElementById('cfgPaperWidth').value = cfg.paperWidth || '80mm';
-  document.getElementById('cfgAutoPrint').value = cfg.autoPrint || 'enabled';
-  document.getElementById('cfgReceiptFooter').value = cfg.receiptFooter || '';
+  const printerCfg = (typeof ThermalPrinter !== 'undefined' && ThermalPrinter.getPrinterConfig) 
+    ? ThermalPrinter.getPrinterConfig() 
+    : cfg;
+
+  document.getElementById('cfgPrinterModel').value = printerCfg.printerModel || 'Rongta RP336 (80mm)';
+  document.getElementById('cfgPaperWidth').value = printerCfg.paperWidth || '80mm';
+  document.getElementById('cfgAutoPrint').value = printerCfg.autoPrint || 'enabled';
+  document.getElementById('cfgReceiptFooter').value = printerCfg.receiptFooter || '';
+
+  if (document.getElementById('cfgReceiptPrinterName')) {
+    document.getElementById('cfgReceiptPrinterName').value = printerCfg.receiptPrinterName || '';
+  }
+  if (document.getElementById('cfgKitchenPrinterName')) {
+    document.getElementById('cfgKitchenPrinterName').value = printerCfg.kitchenPrinterName || '';
+  }
+  if (document.getElementById('cfgBarPrinterName')) {
+    document.getElementById('cfgBarPrinterName').value = printerCfg.barPrinterName || '';
+  }
+  if (document.getElementById('cfgUseSilentPrint')) {
+    document.getElementById('cfgUseSilentPrint').value = printerCfg.useSilentPrint !== false ? 'true' : 'false';
+  }
+
+  if (typeof refreshSystemPrintersList === 'function') {
+    refreshSystemPrintersList();
+  }
 
   // Telegram Config
   const savedChatIds = cfg.telegramChatIds && cfg.telegramChatIds.length > 0
@@ -1004,6 +1095,99 @@ window.handleSaveStoreProfile = function(e) {
   showToast('تم حفظ بيانات المنشأة بنجاح');
 };
 
+window.detectedSystemPrinters = [];
+
+window.refreshSystemPrintersList = async function() {
+  const badge = document.getElementById('detectedPrintersBadge');
+  const title = document.getElementById('electronStatusTitle');
+  const sub = document.getElementById('electronStatusSub');
+
+  if (badge) badge.textContent = 'جاري فحص الطابعات...';
+
+  try {
+    const isElectron = Boolean(window.electronAPI && window.electronAPI.isElectron);
+    const printers = (typeof ThermalPrinter !== 'undefined' && ThermalPrinter.getSystemPrinters) 
+      ? await ThermalPrinter.getSystemPrinters() 
+      : [];
+
+    window.detectedSystemPrinters = printers;
+
+    const receiptSelect = document.getElementById('cfgReceiptPrinterSelect');
+    const kitchenSelect = document.getElementById('cfgKitchenPrinterSelect');
+    const barSelect = document.getElementById('cfgBarPrinterSelect');
+
+    const curReceipt = document.getElementById('cfgReceiptPrinterName') ? document.getElementById('cfgReceiptPrinterName').value : '';
+    const curKitchen = document.getElementById('cfgKitchenPrinterName') ? document.getElementById('cfgKitchenPrinterName').value : '';
+    const curBar = document.getElementById('cfgBarPrinterName') ? document.getElementById('cfgBarPrinterName').value : '';
+
+    let optionsHtml = '<option value="">-- اختر طابعة --</option>';
+
+    if (printers && printers.length > 0) {
+      printers.forEach(p => {
+        const pName = typeof p === 'string' ? p : (p.displayName || p.name);
+        const isDefault = p.isDefault ? ' (الافتراضية)' : '';
+        optionsHtml += `<option value="${pName}">${pName}${isDefault}</option>`;
+      });
+
+      if (badge) {
+        badge.textContent = `تم العثور على ${printers.length} طابعة في الويندوز ✓`;
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#15803d';
+      }
+      if (title) title.textContent = '✅ بيئة إلكترون متصلة — الطباعة الصامتة مفعلة وجاهزة';
+      if (sub) sub.textContent = `تم التعرف على ${printers.length} طابعة مثبتة بنجاح. يتم إرسال الريسيت فوراً بدون شاشة ويندوز.`;
+    } else {
+      optionsHtml += `
+        <option value="Rongta RP336 (80mm)">Rongta RP336 (80mm)</option>
+        <option value="POS-80">POS-80 Thermal Printer</option>
+        <option value="XP-80C">Xprinter XP-80</option>
+      `;
+      if (badge) {
+        if (isElectron) {
+          badge.textContent = 'لا توجد طابعات معرفة';
+        } else {
+          badge.textContent = '🌐 وضع المتصفح (جاهز لربط Electron)';
+        }
+      }
+      if (!isElectron && title) {
+        title.textContent = 'نظام الكاشير (متصفح ويب / تطبيق Electron)';
+        sub.textContent = 'يمكنك كتابة اسم الطابعة مباشرة، وعند تشغيل التطبيق عبر Electron يتم تفعيل الطباعة الصامتة تلقائياً.';
+      }
+    }
+
+    if (receiptSelect) receiptSelect.innerHTML = optionsHtml;
+    if (kitchenSelect) kitchenSelect.innerHTML = '<option value="">-- نفس طابعة الكاشير الرئيسية --</option>' + optionsHtml.replace('<option value="">-- اختر طابعة --</option>', '');
+    if (barSelect) barSelect.innerHTML = '<option value="">-- نفس طابعة الكاشير الرئيسية --</option>' + optionsHtml.replace('<option value="">-- اختر طابعة --</option>', '');
+
+    if (curReceipt && receiptSelect) receiptSelect.value = curReceipt;
+    if (curKitchen && kitchenSelect) kitchenSelect.value = curKitchen;
+    if (curBar && barSelect) barSelect.value = curBar;
+
+  } catch (err) {
+    console.warn('Printer scan error:', err);
+    if (badge) badge.textContent = 'خطأ أثناء فحص الطابعات';
+  }
+};
+
+window.syncPrinterSelection = function(type) {
+  if (type === 'receipt') {
+    const sel = document.getElementById('cfgReceiptPrinterSelect');
+    if (sel && sel.value) {
+      document.getElementById('cfgReceiptPrinterName').value = sel.value;
+    }
+  } else if (type === 'kitchen') {
+    const sel = document.getElementById('cfgKitchenPrinterSelect');
+    if (sel && sel.value) {
+      document.getElementById('cfgKitchenPrinterName').value = sel.value;
+    }
+  } else if (type === 'bar') {
+    const sel = document.getElementById('cfgBarPrinterSelect');
+    if (sel && sel.value) {
+      document.getElementById('cfgBarPrinterName').value = sel.value;
+    }
+  }
+};
+
 window.handleSavePrinter = function(e) {
   e.preventDefault();
   const cfg = JSON.parse(localStorage.getItem('cs_configs') || '{}');
@@ -1012,8 +1196,48 @@ window.handleSavePrinter = function(e) {
   cfg.autoPrint = document.getElementById('cfgAutoPrint').value;
   cfg.receiptFooter = document.getElementById('cfgReceiptFooter').value.trim();
 
+  const receiptP = document.getElementById('cfgReceiptPrinterName') ? document.getElementById('cfgReceiptPrinterName').value.trim() : '';
+  const kitchenP = document.getElementById('cfgKitchenPrinterName') ? document.getElementById('cfgKitchenPrinterName').value.trim() : '';
+  const barP = document.getElementById('cfgBarPrinterName') ? document.getElementById('cfgBarPrinterName').value.trim() : '';
+  const useSilent = document.getElementById('cfgUseSilentPrint') ? (document.getElementById('cfgUseSilentPrint').value === 'true') : true;
+
+  cfg.receiptPrinterName = receiptP;
+  cfg.kitchenPrinterName = kitchenP;
+  cfg.barPrinterName = barP;
+  cfg.useSilentPrint = useSilent;
+
+  if (typeof ThermalPrinter !== 'undefined' && ThermalPrinter.savePrinterConfig) {
+    ThermalPrinter.savePrinterConfig(cfg);
+  }
   DataService.set('storeConfig', cfg);
-  showToast('تم حفظ إعدادات طابعة Rongta والإيصالات بنجاح');
+  showToast('تم حفظ إعدادات الطابعات والطباعة الصامتة بنجاح ✓');
+};
+
+window.testSilentDirectPrinter = async function() {
+  const receiptPrinter = (document.getElementById('cfgReceiptPrinterName') && document.getElementById('cfgReceiptPrinterName').value.trim()) || 'الافتراضية';
+  showToast(`⚡ جاري اختبار الطباعة الصامتة الفورية للطابعة [${receiptPrinter}]...`);
+  try {
+    const testInvoice = {
+      id: 'TEST-' + Math.floor(1000 + Math.random() * 9000),
+      type: 'dine',
+      tableLabel: 'طاولة فحص الكاشير',
+      customer: 'فحص الطباعة الصامتة الفورية',
+      items: [
+        { name: 'اختبار الطباعة الصامتة (Silent Print)', qty: 1, price: 100, note: 'Electron Direct' },
+        { name: 'إخراج الفاتورة فوراً بدون شاشة ويندوز', qty: 1, price: 50, note: 'نجاح الربط المباشر' }
+      ],
+      subtotal: 150,
+      total: 150,
+      payMethod: 'cash',
+      status: 'paid',
+      comment: 'فحص ناجح: الريسيت يخرج مباشرة وفوراً من الطابعة بدون أي نوافذ!',
+      time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+    };
+    await ThermalPrinter.printReceipt(testInvoice);
+    showToast('✅ تم إرسال أمر الفحص الصامت للطابعة بنجاح!');
+  } catch (err) {
+    showToast('تنبيه أثناء الطباعة الصامتة: ' + (err.message || err));
+  }
 };
 
 window.testRongtaPrinter = function() {

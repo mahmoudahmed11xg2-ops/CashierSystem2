@@ -38,7 +38,12 @@ export const PRINTER_CONFIG_DEFAULT = {
   showItemNotes: true,
   // Dual Screen / Customer Display Settings
   autoOpenCustomerDisplay: true,
-  customerScreenPosition: 'top' // 'top' (above display 1, matching Diebold Nixdorf), 'right', 'left'
+  customerScreenPosition: 'top', // 'top' (above display 1, matching Diebold Nixdorf), 'right', 'left'
+  // Electron Direct / Silent Printing Settings
+  useSilentPrint: true, // طباعة صامتة فورية بدون ظهور نافذة الويندوز
+  receiptPrinterName: '', // اسم طابعة الفواتير والكاشير من إعدادات الويندوز
+  kitchenPrinterName: '', // اسم طابعة المطبخ
+  barPrinterName: '' // اسم طابعة البار
 };
 
 export const DEFAULT_RECEIPT_BLOCKS = [
@@ -519,12 +524,43 @@ export function generateReceiptHTML(invoice, options = {}) {
   `;
 }
 
-// تنفيذ الطباعة المباشرة عبر iframe خفي (حل موثوق 100% ضد حجب الـ popups)
-export function printReceipt(invoice, options = {}) {
+// استعلام قائمة الطابعات المعرفة في نظام الويندوز عبر Electron
+export async function getSystemPrinters() {
+  if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.getPrinters === 'function') {
+    try {
+      const printers = await window.electronAPI.getPrinters();
+      return Array.isArray(printers) ? printers : [];
+    } catch (e) {
+      console.warn('Error fetching system printers:', e);
+      return [];
+    }
+  }
+  return [];
+}
+
+// تنفيذ الطباعة المباشرة — تدعم الطباعة الصامتة الفورية عبر Electron أو عبر متصفح الويب
+export async function printReceipt(invoice, options = {}) {
+  const cfg = { ...getPrinterConfig(), ...options };
+  const htmlContent = generateReceiptHTML(invoice, options);
+
+  // إذا كان التطبيق يعمل داخل Electron والطباعة الصامتة مفعلة:
+  if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.printSilent === 'function' && cfg.useSilentPrint !== false) {
+    try {
+      const targetPrinter = cfg.receiptPrinterName || '';
+      const res = await window.electronAPI.printSilent({
+        html: htmlContent,
+        printerName: targetPrinter,
+        silent: true
+      });
+      return res;
+    } catch (electronErr) {
+      console.warn('Electron silent print notice:', electronErr);
+      // في حال حدوث استثناء نادر، يتم التراجع للطباعة العادية
+    }
+  }
+
   return new Promise((resolve, reject) => {
     try {
-      const htmlContent = generateReceiptHTML(invoice, options);
-
       // البحث عن iframe مخصص للطباعة أو إنشاؤه
       let printFrame = document.getElementById('cs_thermal_print_iframe');
       if (!printFrame) {
@@ -778,15 +814,45 @@ function printTicketViaIframe(iframeId, html) {
   });
 }
 
-// طباعة بون المطبخ مباشرة عبر طابعة المطبخ
+// طباعة بون المطبخ مباشرة عبر طابعة المطبخ (تدعم الطباعة الصامتة الفورية)
 export async function printKitchenTicket(order, round = null, items = null, roundComment = '') {
+  const cfg = getPrinterConfig();
   const html = generateKitchenTicketHTML(order, round, items, roundComment);
+
+  if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.printSilent === 'function' && cfg.useSilentPrint !== false) {
+    try {
+      const targetPrinter = cfg.kitchenPrinterName || cfg.receiptPrinterName || '';
+      return await window.electronAPI.printSilent({
+        html,
+        printerName: targetPrinter,
+        silent: true
+      });
+    } catch (err) {
+      console.warn('Electron silent kitchen print fallback:', err);
+    }
+  }
+
   return printTicketViaIframe('thermal-kitchen-printer-iframe', html);
 }
 
-// طباعة بون البار مباشرة عبر طابعة البار والمشروبات
+// طباعة بون البار مباشرة عبر طابعة البار والمشروبات (تدعم الطباعة الصامتة الفورية)
 export async function printBarTicket(order, round = null, items = null, roundComment = '') {
+  const cfg = getPrinterConfig();
   const html = generateBarTicketHTML(order, round, items, roundComment);
+
+  if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.printSilent === 'function' && cfg.useSilentPrint !== false) {
+    try {
+      const targetPrinter = cfg.barPrinterName || cfg.receiptPrinterName || '';
+      return await window.electronAPI.printSilent({
+        html,
+        printerName: targetPrinter,
+        silent: true
+      });
+    } catch (err) {
+      console.warn('Electron silent bar print fallback:', err);
+    }
+  }
+
   return printTicketViaIframe('thermal-bar-printer-iframe', html);
 }
 
@@ -925,5 +991,6 @@ export default {
   printBarTicket,
   routeAndPrintRoundTickets,
   printTestReceipt,
-  printDirectESC_POS
+  printDirectESC_POS,
+  getSystemPrinters
 };
